@@ -1,0 +1,1 @@
+ALTER TABLE poll ADD COLUMN user_id uuid not null references app_user(id);

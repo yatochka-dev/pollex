@@ -1,0 +1,15 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+bin = "tmp/main"
+full_bin = "go build -o tmp/main ./main.go"
+include_ext = ["go"]
+exclude_dir = ["tmp", "scripts", "internal/db/migrations", ".idea"]
+delay = 1000
+log = "tmp/build-errors.log"
+send_interrupt = true
+kill_delay = "1s"
+
+[log]
+time = true

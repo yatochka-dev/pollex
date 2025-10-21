@@ -1,0 +1,6 @@
+BEGIN;
+
+DROP TABLE IF EXISTS poll_option;
+DROP TABLE IF EXISTS poll;
+
+COMMIT;

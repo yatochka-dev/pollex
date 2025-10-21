@@ -1,0 +1,1 @@
+ALTER TABLE poll DROP COLUMN IF EXISTS user_id;
