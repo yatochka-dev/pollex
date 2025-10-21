@@ -32,35 +32,35 @@ func (s *VotingService) Vote(c *gin.Context, optionId uuid.UUID, userId uuid.UUI
 		return err
 	}
 
-	votes, err := s.GetVotes(c, vote.PollID)
+	votesData, err := s.GetVotes(c, vote.PollID)
 	if err != nil {
 		return err
 	}
 
-	poll, options, err := s.GetPollData(c, vote.PollID)
+	p, opts, err := s.GetPollData(c, vote.PollID)
 	if err != nil {
 		return err
 	}
 
-	// Publish vote update to all subscribers
+	// publish to SSE subscribers
 	log.Printf("pub poll=%s active=%d", vote.PollID.String(), s.Broker.ActiveSubscribers(vote.PollID.String()))
-	s.Broker.PublishVoteUpdate(poll, options, votes, &optionId)
+	s.Broker.PublishVoteUpdate(p, opts, votesData, &optionId)
 
 	return nil
 }
 
 func (s *VotingService) GetPollData(c *gin.Context, pollId uuid.UUID) (repository.Poll, []repository.PollOption, error) {
-	poll, err := s.Queries.GetPollByID(c, pollId)
+	p, err := s.Queries.GetPollByID(c, pollId)
 	if err != nil {
 		return repository.Poll{}, nil, err
 	}
 
-	options, err := s.Queries.ListOptionsByPollID(c, pollId)
+	opts, err := s.Queries.ListOptionsByPollID(c, pollId)
 	if err != nil {
 		return repository.Poll{}, nil, err
 	}
 
-	return poll, options, nil
+	return p, opts, nil
 }
 
 func (s *VotingService) GetVoteUpdate(c *gin.Context, pollId uuid.UUID) (pubsub.VoteUpdate, error) {
@@ -89,7 +89,7 @@ func (s *VotingService) GetVotes(c *gin.Context, pollId uuid.UUID) (util.PollVot
 		return util.PollVotes{}, err
 	}
 
-	votesMap := make(util.PollVotes, len(votes)) // second param (capacity) is for optimization
+	votesMap := make(util.PollVotes, len(votes))
 
 	for _, vote := range votes {
 		voteCount := vote.VoteCount
@@ -99,15 +99,16 @@ func (s *VotingService) GetVotes(c *gin.Context, pollId uuid.UUID) (util.PollVot
 	return votesMap, nil
 }
 
-func (s *VotingService) GetVoteForUser(c *gin.Context, pollId uuid.UUID, userId uuid.UUID) (uuid.UUID, error) {
-	optionId, err := s.Queries.GetUserOptionIdByPollId(c, repository.GetUserOptionIdByPollIdParams{PollID: pollId, UserID: userId})
+// GetVoteForUser gets user's vote for a poll
+func (s *VotingService) GetVoteForUser(c *gin.Context, poll_id uuid.UUID, userId uuid.UUID) (uuid.UUID, error) {
+	optionId, err := s.Queries.GetUserOptionIdByPollId(c, repository.GetUserOptionIdByPollIdParams{PollID: poll_id, UserID: userId})
 	if err != nil {
-		// No rows means user hasn't voted yet - this is expected behavior
+		// no rows = hasn't voted yet
 		if errors.Is(err, pgx.ErrNoRows) {
 			return uuid.Nil, nil
 		}
-		// Actual error occurred
-		log.Printf("Failed to fetch vote for user %s on poll %s: %v", userId, pollId, err)
+		// actual error
+		log.Printf("Failed to fetch vote for user %s on poll %s: %v", userId, poll_id, err)
 		return uuid.Nil, err
 	}
 

@@ -10,7 +10,7 @@ import {
 } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { CheckCircle2, Lock, AlertCircle, Users } from "lucide-react";
+import { CheckCircle2, Lock, AlertCircle, Users, Share2 } from "lucide-react";
 import { useSubscribeToPoll } from "~/hooks/useSubscribeToPoll";
 import useVote from "~/hooks/useVote";
 import useUserVote from "~/hooks/useUserVote";
@@ -23,7 +23,7 @@ interface PollProps {
 }
 
 export function PollCard({ pollId }: PollProps) {
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [animating, setAnimating] = useState(false);
 
   const { poll, error, viewerCount } = useSubscribeToPoll(pollId);
   const voteControl = useVote();
@@ -32,7 +32,7 @@ export function PollCard({ pollId }: PollProps) {
   const session = useSession();
   const router = useRouter();
 
-  // Loading state
+  // loading state
   if (!poll && !error) {
     return (
       <Card className="overflow-hidden border-2 shadow-lg">
@@ -46,7 +46,7 @@ export function PollCard({ pollId }: PollProps) {
     );
   }
 
-  // Error state
+  // error
   if (error || !poll) {
     return (
       <Card className="overflow-hidden border-2 border-red-500 shadow-lg">
@@ -68,33 +68,64 @@ export function PollCard({ pollId }: PollProps) {
     );
   }
 
+  const handleShare = async () => {
+    const shareUrl = window.location.href;
+    const shareData = {
+      title: poll.question,
+      text: `Vote on: ${poll.question}`,
+      url: shareUrl,
+    };
+
+    // check if we can use native share (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        toast.success("Shared successfully!");
+      } catch (err) {
+        // user cancelled or error - just ignore
+        if (err instanceof Error && err.name !== "AbortError") {
+          console.error("Share failed:", err);
+        }
+      }
+    } else {
+      // fallback to clipboard copy (desktop)
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied to clipboard!");
+      } catch (err) {
+        toast.error("Failed to copy link");
+        console.error("Copy failed:", err);
+      }
+    }
+  };
+
   const handleOptionClick = async (optionId: string) => {
-    // Check authentication
+    // check auth
     if (!session.authenticated) {
       toast.error("Please sign in to vote");
       router.push("/auth");
       return;
     }
 
-    // Can't vote on closed polls
+    // can't vote on closed polls
     if (poll.closed) {
       toast.error("This poll is closed");
       return;
     }
 
-    // Can't vote for same option twice (no-op)
+    // can't vote same option twice
     if (userVote.hasVoted && userVote.option_id === optionId) {
       return;
     }
 
-    // Prevent double-clicking
+    // prevent double click
     if (voteControl.isPending) {
       return;
     }
 
-    setIsAnimating(true);
+    setAnimating(true);
 
-    // Use toast.promise for smooth feedback without layout shifts
+    // toast.promise for smooth feedback
     void toast
       .promise(
         voteControl.vote(optionId),
@@ -115,7 +146,7 @@ export function PollCard({ pollId }: PollProps) {
       )
       .finally(() => {
         setTimeout(() => {
-          setIsAnimating(false);
+          setAnimating(false);
         }, 600);
       });
   };
@@ -141,10 +172,19 @@ export function PollCard({ pollId }: PollProps) {
       <Card className="overflow-hidden border-2 shadow-lg">
         <CardHeader className="bg-accent/30 space-y-3">
           <div className="flex items-start justify-between gap-4">
-            <CardTitle className="text-2xl leading-tight font-bold text-balance">
+            <CardTitle className="flex-1 text-2xl leading-tight font-bold text-balance">
               {poll.question}
             </CardTitle>
             <div className="flex shrink-0 items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleShare}
+                className="shrink-0"
+                title="Share poll"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
               {viewerCount > 0 && (
                 <Badge
                   variant="outline"
@@ -175,7 +215,7 @@ export function PollCard({ pollId }: PollProps) {
 
         <CardContent className="space-y-4 p-6">
           <div className="space-y-3">
-            {poll.options.map((option, index) => {
+            {poll.options.map((option, idx) => {
               const percentage = getPercentage(option.votes);
               const isSelected =
                 userVote.option_id === option.id && session.authenticated;
@@ -189,18 +229,18 @@ export function PollCard({ pollId }: PollProps) {
                     isSelected
                       ? "border-primary bg-primary/5 scale-[1.02] shadow-md"
                       : "border-border hover:border-primary/50 hover:bg-accent/50"
-                  } ${poll.closed || voteControl.isPending ? "cursor-default" : "cursor-pointer"} ${isAnimating && isSelected ? "animate-pulse" : ""} disabled:opacity-100`}
+                  } ${poll.closed || voteControl.isPending ? "cursor-default" : "cursor-pointer"} ${animating && isSelected ? "animate-pulse" : ""} disabled:opacity-100`}
                   style={{
-                    animationDelay: `${index * 50}ms`,
+                    animationDelay: `${idx * 50}ms`,
                   }}
                 >
-                  {/* Progress bar background */}
+                  {/* progress bar bg */}
                   {showResults && (
                     <div
                       className="absolute inset-0 rounded-md bg-black/10 transition-all duration-700 ease-out"
                       style={{
                         width: `${percentage}%`,
-                        transitionDelay: `${index * 100}ms`,
+                        transitionDelay: `${idx * 100}ms`,
                       }}
                     />
                   )}
@@ -231,7 +271,7 @@ export function PollCard({ pollId }: PollProps) {
             })}
           </div>
 
-          {/* Status message area - always reserve space to prevent layout shift */}
+          {/* status message area - reserve space to prevent layout shift */}
           <div className="min-h-[68px]">
             {!session.authenticated && (
               <div className="bg-accent/30 border-border animate-in fade-in slide-in-from-bottom-2 rounded-lg border p-4 text-center duration-500">

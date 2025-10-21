@@ -47,7 +47,7 @@ export const ErrorResponseSchema = z.object({
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
 // ============================================================================
-// Authentication Schemas
+// Auth Schemas
 // ============================================================================
 
 export const LoginInputSchema = z.object({
@@ -138,6 +138,7 @@ export const CreatePollResponseSchema = z.object({
 
 export type CreatePollResponse = z.infer<typeof CreatePollResponseSchema>;
 
+// TODO maybe merge these schemas?
 export const UserPollSchema = z.object({
   id: z.string().uuid(),
   question: z.string(),
@@ -167,12 +168,12 @@ export type ViewersEvent = z.infer<typeof ViewersEventSchema>;
 // Utility Types
 // ============================================================================
 
-// API result type for consistent error handling
+// API result type for error handling
 export type ApiResult<T> =
   | { success: true; data: T }
   | { success: false; error: ErrorResponse; status: number };
 
-// Async state for UI
+// async state for UI
 export type AsyncState<T> =
   | { status: "idle" }
   | { status: "loading" }

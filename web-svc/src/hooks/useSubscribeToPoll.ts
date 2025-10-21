@@ -18,7 +18,7 @@ export const useSubscribeToPoll = (pollId: string) => {
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => [`poll`, `poll-${pollId}`], [pollId]);
 
-  // Track viewer count from SSE events
+  // viewer count from SSE
   const [viewerCount, setViewerCount] = useState<number>(0);
 
   const { data, error } = useQuery({
@@ -38,15 +38,15 @@ export const useSubscribeToPoll = (pollId: string) => {
       console.log("SSE connection opened");
     });
 
-    // Handle vote updates
+    // vote updates
     eventSource.addEventListener("vote", (event) => {
-      const queryData = event.data && JSON.parse(event.data);
-      console.log("Vote update:", queryData);
-      const pollData = PollDataSchema.parse(queryData);
+      const data2 = event.data && JSON.parse(event.data);
+      console.log("Vote update:", data2); // TODO remove this later
+      const pollData = PollDataSchema.parse(data2);
       queryClient.setQueriesData({ queryKey }, pollData);
     });
 
-    // Handle viewer count updates
+    // viewer count updates
     eventSource.addEventListener("viewers", (event) => {
       const data = event.data && JSON.parse(event.data);
       console.log("Viewers update:", data);

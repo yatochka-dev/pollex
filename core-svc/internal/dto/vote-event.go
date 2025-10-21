@@ -8,13 +8,13 @@ import (
 	"github.com/yatochka-dev/pollex/core-svc/internal/pubsub"
 )
 
-// SSEMessage represents a Server-Sent Event message
+// SSEMessage - Server-Sent Event format
 type SSEMessage struct {
-	Event string `json:"-"` // Event type (vote, viewers, etc.)
-	Data  string `json:"-"` // JSON data to send
+	Event string `json:"-"` // event type
+	Data  string `json:"-"` // json data
 }
 
-// VoteEventData is the JSON structure sent for vote updates
+// VoteEventData - vote update json structure
 type VoteEventData struct {
 	ID         uuid.UUID          `json:"id"`
 	Question   string             `json:"question"`
@@ -24,20 +24,20 @@ type VoteEventData struct {
 	Options    []OptionData       `json:"options"`
 }
 
-// OptionData represents a poll option with vote count
+// OptionData - poll option with votes
 type OptionData struct {
 	ID    uuid.UUID `json:"id"`
 	Label string    `json:"label"`
 	Votes int64     `json:"votes"`
 }
 
-// ViewersEventData is the JSON structure sent for viewer count updates
+// ViewersEventData viewer count
 type ViewersEventData struct {
 	PollID      uuid.UUID `json:"pollId"`
 	ViewerCount int       `json:"viewerCount"`
 }
 
-// FormatSSEEvent converts a pubsub.Event into an SSE message
+// FormatSSEEvent - converts event to SSE message
 func FormatSSEEvent(event pubsub.Event) (SSEMessage, error) {
 	switch event.Type {
 	case pubsub.EventTypeVote:
@@ -49,37 +49,36 @@ func FormatSSEEvent(event pubsub.Event) (SSEMessage, error) {
 	}
 }
 
-// formatVoteEvent converts a VoteUpdate into an SSE message
 func formatVoteEvent(vote *pubsub.VoteUpdate) (SSEMessage, error) {
 	if vote == nil {
 		return SSEMessage{}, nil
 	}
 
-	// Calculate total votes
-	totalVotes := uint64(0)
+	// calc total
+	total := uint64(0)
 	for _, count := range vote.Votes {
-		totalVotes += uint64(count)
+		total += uint64(count)
 	}
 
-	// Build options with vote counts
-	options := make([]OptionData, 0, len(vote.Options))
+	// build options array
+	opts := make([]OptionData, 0, len(vote.Options))
 	for _, opt := range vote.Options {
-		count := vote.Votes[opt.ID]
-		options = append(options, OptionData{
+		cnt := vote.Votes[opt.ID]
+		opts = append(opts, OptionData{
 			ID:    opt.ID,
 			Label: opt.Label,
-			Votes: count,
+			Votes: cnt,
 		})
 	}
 
-	// Create the event data
+	// create event data
 	data := VoteEventData{
 		ID:         vote.Poll.ID,
 		Question:   vote.Poll.Question,
 		CreatedAt:  vote.Poll.CreatedAt,
 		Closed:     vote.Poll.Closed,
-		TotalVotes: totalVotes,
-		Options:    options,
+		TotalVotes: total,
+		Options:    opts,
 	}
 
 	jsonData, err := json.Marshal(data)
@@ -93,7 +92,6 @@ func formatVoteEvent(vote *pubsub.VoteUpdate) (SSEMessage, error) {
 	}, nil
 }
 
-// formatViewersEvent converts a ViewersUpdate into an SSE message
 func formatViewersEvent(viewers *pubsub.ViewersUpdate) (SSEMessage, error) {
 	if viewers == nil {
 		return SSEMessage{}, nil
@@ -115,7 +113,7 @@ func formatViewersEvent(viewers *pubsub.ViewersUpdate) (SSEMessage, error) {
 	}, nil
 }
 
-// WriteSSE formats and writes an SSE message to a byte slice
+// WriteSSE formats SSE message to bytes
 func WriteSSE(msg SSEMessage) []byte {
 	var result []byte
 

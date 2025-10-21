@@ -11,7 +11,7 @@ function useVote() {
   const mut = useMutation({
     mutationKey: ["vote", "actions"],
     mutationFn: async (optionId: string) => {
-      // Validate input
+      // validate input
       const validated: VoteInput = VoteInputSchema.parse({
         option_id: optionId,
       });
@@ -23,7 +23,7 @@ function useVote() {
           "Content-Type": "application/json",
         },
         parser: (data) => VoteResponseSchema.parse(data),
-        showErrorToast: false, // toast.promise handles this in poll.tsx
+        showErrorToast: false, // toast.promise handles this
       });
 
       if (!result.success) {
@@ -33,30 +33,28 @@ function useVote() {
       return result.data;
     },
     onMutate: async (option_id: string) => {
-      // Cancel any outgoing refetches to prevent overwriting optimistic update
+      // cancel outgoing refetches
       await qc.cancelQueries({ queryKey: ["userVote"] });
 
-      // Snapshot the previous value
+      // snapshot previous value
       const previousVote = qc.getQueryData(["userVote"]);
 
-      // Optimistically update to the new value
+      // optimistically update
       qc.setQueryData(["userVote"], { option_id });
 
-      // Return context with the snapshot
       return { previousVote };
     },
     onError: (error, option_id, context) => {
-      // Rollback to previous value on error
+      // rollback on error
       if (context?.previousVote) {
         qc.setQueryData(["userVote"], context.previousVote);
       }
-      // Error toast now handled by toast.promise in poll.tsx
     },
     onSuccess: () => {
-      // Success toast now handled by toast.promise in poll.tsx
+      // success toast handled by toast.promise in poll.tsx
     },
     onSettled: async () => {
-      // Refresh the data to ensure consistency
+      // refresh data
       await qc.invalidateQueries({ queryKey: ["userVote"] });
     },
   });

@@ -15,30 +15,30 @@ import (
 type PollsHandler struct {
 	Queries     *repository.Queries
 	AuthService *service.AuthService
-} // polls handler struct
+}
 
 type CreatePollInput struct {
 	Question string   `json:"question" binding:"required"`
 	Options  []string `json:"options" binding:"required"`
-} // poll creation input
+}
 
 type FullPoll struct {
-	repository.Poll                         // embedded; JSON will ignore unexported tags
-	Options         []repository.PollOption `json:"options"`
-} // poll with options
+	repository.Poll
+	Options []repository.PollOption `json:"options"`
+}
 
 func NewPollsHandler(queries *repository.Queries, service *service.AuthService) *PollsHandler {
 	return &PollsHandler{
 		Queries:     queries,
 		AuthService: service,
 	}
-} // constructor
+}
 
 func (h *PollsHandler) Create(c *gin.Context) {
 	logger := util.NewRequestLogger(c)
-	var input CreatePollInput
+	var data CreatePollInput
 
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err := c.ShouldBindJSON(&data); err != nil {
 		logger.LogError(err, "bind_json")
 		ErrorResponse(c, http.StatusBadRequest, err.Error())
 		logger.LogEnd(http.StatusBadRequest)
@@ -54,12 +54,12 @@ func (h *PollsHandler) Create(c *gin.Context) {
 	}
 
 	logger.SetUserID(userId)
-	logger.LogStart(map[string]interface{}{"question": input.Question, "options_count": len(input.Options)})
+	logger.LogStart(map[string]interface{}{"question": data.Question, "options_count": len(data.Options)})
 
 	p, err := h.Queries.CreatePollWithOptions(c.Request.Context(), repository.CreatePollWithOptionsParams{
-		Question: input.Question,
+		Question: data.Question,
 		UserID:   userId,
-		Options:  input.Options,
+		Options:  data.Options,
 	})
 
 	if err != nil {
@@ -73,11 +73,11 @@ func (h *PollsHandler) Create(c *gin.Context) {
 		util.ColorGreen+util.ColorBold, util.ColorReset,
 		util.ColorCyan, userId.String()[:8], util.ColorReset,
 		util.ColorMagenta, p.ID.String()[:8], util.ColorReset,
-		util.ColorYellow, input.Question, util.ColorReset,
-		util.ColorGreen, len(input.Options), util.ColorReset)
+		util.ColorYellow, data.Question, util.ColorReset,
+		util.ColorGreen, len(data.Options), util.ColorReset)
 	OkResponse(c, p)
 	logger.LogEnd(http.StatusOK, map[string]interface{}{"poll_id": p.ID})
-} // create poll endpoint
+}
 
 func (h *PollsHandler) Get(c *gin.Context) {
 	logger := util.NewRequestLogger(c)
@@ -125,8 +125,9 @@ func (h *PollsHandler) Get(c *gin.Context) {
 
 	OkResponse(c, poll)
 	logger.LogEnd(http.StatusOK, map[string]interface{}{"poll_id": pollId.String(), "options_count": len(optRows)})
-} // get poll endpoint
+}
 
+// GetUserPolls - TODO cleanup later
 func (h *PollsHandler) GetUserPolls(c *gin.Context) {
 	logger := util.NewRequestLogger(c)
 
@@ -155,7 +156,7 @@ func (h *PollsHandler) GetUserPolls(c *gin.Context) {
 		util.ColorMagenta, len(polls), util.ColorReset)
 	OkResponse(c, polls)
 	logger.LogEnd(http.StatusOK, map[string]interface{}{"polls_count": len(polls)})
-} // get user polls endpoint
+}
 
 func RegisterPollsRoutes(r *gin.Engine, queries *repository.Queries, config *util.Config) {
 
@@ -169,4 +170,4 @@ func RegisterPollsRoutes(r *gin.Engine, queries *repository.Queries, config *uti
 		pollsRoutes.GET("/:id", handler.Get)
 		pollsRoutes.GET("", handler.GetUserPolls)
 	}
-} // register poll routes
+}

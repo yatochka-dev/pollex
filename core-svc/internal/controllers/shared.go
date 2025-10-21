@@ -6,22 +6,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// --- Response types and helpers ---
-
+// error response
 type TErrorResponse struct {
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
-} // error response struct
+}
 
+// generic response
 type TResponse[T any] struct {
 	Data T `json:"data"`
-} // generic response struct
+}
 
 func OkResponse[T any](
 	c *gin.Context,
 	data T,
 ) {
-	c.JSON(http.StatusOK, data) // 200 OK response
+	c.JSON(http.StatusOK, data)
 }
 
 func Response[T any](
@@ -29,7 +29,7 @@ func Response[T any](
 	data T,
 	status int,
 ) {
-	c.JSON(status, TResponse[T]{Data: data}) // custom status response
+	c.JSON(status, TResponse[T]{Data: data})
 }
 
 func ErrorResponse(c *gin.Context, status int, message string) {
@@ -38,7 +38,7 @@ func ErrorResponse(c *gin.Context, status int, message string) {
 		TErrorResponse{
 			Message: message,
 		},
-	) // error response
+	)
 }
 
 func ErrorResponseWithData(c *gin.Context, status int, message string, data interface{}) {
@@ -48,5 +48,5 @@ func ErrorResponseWithData(c *gin.Context, status int, message string, data inte
 			Message: message,
 			Data:    data,
 		},
-	) // error with data
+	)
 }

@@ -35,19 +35,17 @@ func (h *VoteHandler) Vote(c *gin.Context) {
 	logger := util.NewRequestLogger(c)
 	var input VoteOnPoll
 
-	// Validate request body first
 	if err := c.ShouldBindJSON(&input); err != nil {
 		logger.LogError(err, "bind_json")
-		ErrorResponse(c, http.StatusBadRequest, "Invalid request format")
+		ErrorResponse(c, http.StatusBadRequest, "Invalid request")
 		logger.LogEnd(http.StatusBadRequest)
 		return
 	}
 
-	// Then check authentication
 	userId, err := middleware.GetUserID(c)
 	if err != nil {
 		logger.LogError(err, "get_user_id")
-		ErrorResponse(c, http.StatusUnauthorized, "Authentication required")
+		ErrorResponse(c, http.StatusUnauthorized, "Not logged in")
 		logger.LogEnd(http.StatusUnauthorized)
 		return
 	}
@@ -57,7 +55,7 @@ func (h *VoteHandler) Vote(c *gin.Context) {
 	optionId, err := uuid.Parse(input.OptionId)
 	if err != nil {
 		logger.LogError(err, "parse_option_id")
-		ErrorResponse(c, http.StatusBadRequest, "Invalid option ID format")
+		ErrorResponse(c, http.StatusBadRequest, "bad option ID")
 		logger.LogEnd(http.StatusBadRequest)
 		return
 	}
@@ -67,7 +65,7 @@ func (h *VoteHandler) Vote(c *gin.Context) {
 	err = h.svc.Vote(c, optionId, userId)
 	if err != nil {
 		logger.LogError(err, "vote_failed")
-		ErrorResponse(c, http.StatusInternalServerError, "Failed to record vote")
+		ErrorResponse(c, http.StatusInternalServerError, "vote failed")
 		logger.LogEnd(http.StatusInternalServerError)
 		return
 	}
@@ -82,12 +80,12 @@ func (h *VoteHandler) Vote(c *gin.Context) {
 
 func (h *VoteHandler) GetVotes(c *gin.Context) {
 	logger := util.NewRequestLogger(c)
-	idRaw := c.Param("pollId")
+	id_raw := c.Param("pollId")
 
-	pollId, err := uuid.Parse(idRaw)
+	pollId, err := uuid.Parse(id_raw)
 	if err != nil {
 		logger.LogError(err, "parse_poll_id")
-		ErrorResponse(c, http.StatusBadRequest, "Invalid poll ID format")
+		ErrorResponse(c, http.StatusBadRequest, "Invalid poll ID")
 		logger.LogEnd(http.StatusBadRequest)
 		return
 	}
@@ -97,25 +95,23 @@ func (h *VoteHandler) GetVotes(c *gin.Context) {
 	vu, err := h.svc.GetVoteUpdate(c, pollId)
 	if err != nil {
 		logger.LogError(err, "get_vote_update")
-		ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve poll data")
+		ErrorResponse(c, http.StatusInternalServerError, "Failed to get poll data")
 		logger.LogEnd(http.StatusInternalServerError)
 		return
 	}
 
-	// Format the vote data for response
 	msg, err := dto.FormatSSEEvent(pubsub.NewVoteEvent(vu.Poll, vu.Options, vu.Votes, vu.UserVotedFor))
 	if err != nil {
 		logger.LogError(err, "format_event")
-		ErrorResponse(c, http.StatusInternalServerError, "Failed to format poll data")
+		ErrorResponse(c, http.StatusInternalServerError, "Failed to format data")
 		logger.LogEnd(http.StatusInternalServerError)
 		return
 	}
 
-	// Parse the JSON from the message data
 	var voteData dto.VoteEventData
 	if err := json.Unmarshal([]byte(msg.Data), &voteData); err != nil {
 		logger.LogError(err, "unmarshal_vote_data")
-		ErrorResponse(c, http.StatusInternalServerError, "Failed to parse poll data")
+		ErrorResponse(c, http.StatusInternalServerError, "parse error")
 		logger.LogEnd(http.StatusInternalServerError)
 		return
 	}
@@ -124,6 +120,7 @@ func (h *VoteHandler) GetVotes(c *gin.Context) {
 	logger.LogEnd(http.StatusOK, map[string]interface{}{"total_votes": voteData.TotalVotes})
 }
 
+// SubscribeVotes - SSE endpoint (this shit took forever to get working)
 func (handler *VoteHandler) SubscribeVotes(c *gin.Context) {
 	logger := util.NewRequestLogger(c)
 	pollID := c.Param("pollId")
@@ -136,15 +133,15 @@ func (handler *VoteHandler) SubscribeVotes(c *gin.Context) {
 		return
 	}
 
-	// Validate poll ID format
+	// validate poll ID
 	pollUUID, err := uuid.Parse(pollID)
 	if err != nil {
 		logger.LogError(err, "invalid_poll_id")
-		ErrorResponse(c, http.StatusBadRequest, "Invalid poll ID format")
+		ErrorResponse(c, http.StatusBadRequest, "bad poll ID")
 		return
 	}
 
-	// SSE headers
+	// SSE headers - don't fucking touch these they finally work
 	h := c.Writer.Header()
 	h.Set("Content-Type", "text/event-stream")
 	h.Set("Cache-Control", "no-cache")
@@ -157,7 +154,7 @@ func (handler *VoteHandler) SubscribeVotes(c *gin.Context) {
 		return
 	}
 
-	// Subscribe to updates (this will automatically trigger a viewer count update)
+	// Subscribe (this auto-sends viewer count now)
 	events, cancel := handler.broker.Subscribe(c.Request.Context(), pollID, 32)
 	defer cancel()
 
@@ -166,11 +163,11 @@ func (handler *VoteHandler) SubscribeVotes(c *gin.Context) {
 		util.ColorMagenta, pollID[:8], util.ColorReset,
 		util.ColorCyan, handler.broker.ActiveSubscribers(pollID), util.ColorReset)
 
-	// Send connection confirmation
+	// connection confirmation
 	c.Writer.Write([]byte(": connected\n\n"))
 	flusher.Flush()
 
-	// Send heartbeat every 25 seconds to keep connection alive
+	// heartbeat every 25s
 	heartbeat := time.NewTicker(25 * time.Second)
 	defer heartbeat.Stop()
 
@@ -184,7 +181,6 @@ func (handler *VoteHandler) SubscribeVotes(c *gin.Context) {
 				return
 			}
 
-			// Format and send the event
 			msg, err := dto.FormatSSEEvent(event)
 			if err != nil {
 				log.Printf("%s[SSE ERROR]%s Failed to format event: %v",
@@ -192,17 +188,16 @@ func (handler *VoteHandler) SubscribeVotes(c *gin.Context) {
 				continue
 			}
 
-			// Write the SSE message
 			sseData := dto.WriteSSE(msg)
 			c.Writer.Write(sseData)
 			flusher.Flush()
 
 		case <-heartbeat.C:
-			// Send heartbeat ping
+			// ping
 			c.Writer.Write([]byte(": ping\n\n"))
 			flusher.Flush()
 
-			// Also send current viewer count on heartbeat
+			// send viewer count on heartbeat
 			handler.broker.PublishViewersUpdate(pollUUID)
 
 		case <-c.Request.Context().Done():
@@ -216,12 +211,12 @@ func (handler *VoteHandler) SubscribeVotes(c *gin.Context) {
 
 func (h *VoteHandler) GetOptionVotedFor(c *gin.Context) {
 	logger := util.NewRequestLogger(c)
-	pollIdRaw := c.Param("pollId")
+	poll_id_raw := c.Param("pollId")
 
-	pollId, err := uuid.Parse(pollIdRaw)
+	poll_id, err := uuid.Parse(poll_id_raw)
 	if err != nil {
 		logger.LogError(err, "parse_poll_id")
-		ErrorResponse(c, http.StatusBadRequest, "Invalid poll ID format")
+		ErrorResponse(c, http.StatusBadRequest, "Invalid poll ID")
 		logger.LogEnd(http.StatusBadRequest)
 		return
 	}
@@ -229,24 +224,23 @@ func (h *VoteHandler) GetOptionVotedFor(c *gin.Context) {
 	userId, err := middleware.GetUserID(c)
 	if err != nil {
 		logger.LogError(err, "get_user_id")
-		ErrorResponse(c, http.StatusUnauthorized, "Authentication required")
+		ErrorResponse(c, http.StatusUnauthorized, "not logged in")
 		logger.LogEnd(http.StatusUnauthorized)
 		return
 	}
 
 	logger.SetUserID(userId)
-	logger.LogStart(map[string]interface{}{"poll_id": pollId.String()})
+	logger.LogStart(map[string]interface{}{"poll_id": poll_id.String()})
 
-	// Fetch the user's vote for the specified poll
-	optionId, err := h.svc.GetVoteForUser(c, pollId, userId)
+	optionId, err := h.svc.GetVoteForUser(c, poll_id, userId)
 	if err != nil {
 		logger.LogError(err, "get_vote_for_user")
-		ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve vote")
+		ErrorResponse(c, http.StatusInternalServerError, "error getting vote")
 		logger.LogEnd(http.StatusInternalServerError)
 		return
 	}
 
-	// If optionId is nil UUID, user hasn't voted yet
+	// user hasn't voted
 	if optionId == uuid.Nil {
 		OkResponse(c, gin.H{
 			"option_id": nil,
@@ -255,7 +249,6 @@ func (h *VoteHandler) GetOptionVotedFor(c *gin.Context) {
 		return
 	}
 
-	// Return the user's vote
 	OkResponse(c, gin.H{
 		"option_id": optionId.String(),
 	})
@@ -265,7 +258,7 @@ func (h *VoteHandler) GetOptionVotedFor(c *gin.Context) {
 func RegisterVoteRoutes(r *gin.Engine, svc *service.VotingService, broker *pubsub.Broker) {
 	handler := NewVoteHandler(svc, broker)
 
-	voting := r.Group("/polls/votes") // single group inherits global middleware
+	voting := r.Group("/polls/votes")
 
 	voting.GET("/:pollId", handler.GetVotes)
 	voting.GET("/:pollId/subscribe", handler.SubscribeVotes)

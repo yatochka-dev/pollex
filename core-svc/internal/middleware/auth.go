@@ -10,7 +10,7 @@ import (
 	"github.com/yatochka-dev/pollex/core-svc/internal/util"
 )
 
-// Auth cookie, validate, set userID
+// auth middleware - checks cookie and validates token
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenStr, err := c.Cookie("pollex.session")
@@ -20,7 +20,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 		config := util.NewConfig()
 		svc := service.NewTokenService(config)
-		// Verify token signature and expiration
+		// verify token
 		claims, err := svc.ExtractTokenData(tokenStr)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "Invalid or expired token"})
@@ -31,7 +31,7 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-// Extract userID from context
+// gets userID from context
 func GetUserID(c *gin.Context) (uuid.UUID, error) {
 	id, _ := c.Get("userID")
 

@@ -16,10 +16,11 @@ type AuthHandler struct {
 	Queries      *repository.Queries
 	TokenService *service.TokenService
 	AuthService  *service.AuthService
-} // auth handler struct
+}
+
 type LoginResponse struct {
 	Message string `json:"message"`
-} // login response struct
+}
 
 func NewAuthHandler(queries *repository.Queries, tokenService *service.TokenService, service *service.AuthService) *AuthHandler {
 	return &AuthHandler{
@@ -27,7 +28,7 @@ func NewAuthHandler(queries *repository.Queries, tokenService *service.TokenServ
 		TokenService: tokenService,
 		AuthService:  service,
 	}
-} // constructor
+}
 
 // Login endpoint
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -36,7 +37,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		logger.LogError(err, "bind_json")
-		ErrorResponse(c, http.StatusBadRequest, "Invalid request format")
+		ErrorResponse(c, http.StatusBadRequest, "Invalid request")
 		logger.LogEnd(http.StatusBadRequest)
 		return
 	}
@@ -45,7 +46,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	token, err := h.AuthService.Login(c, input)
 	if err != nil {
-		// Map service errors to proper HTTP status codes
 		if errors.Is(err, util.ErrInvalidCredentials) {
 			logger.LogError(err, "invalid_credentials")
 			ErrorResponse(c, http.StatusUnauthorized, "Invalid email or password")
@@ -67,13 +67,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	logger.LogEnd(http.StatusOK)
 }
 
-// Logout endpoint
 func (h *AuthHandler) Logout(c *gin.Context) {
 	logger := util.NewRequestLogger(c)
 	logger.LogStart()
 
 	config := util.NewConfig()
-	// Clear session cookie
+	// clear cookie
 	c.SetCookie(
 		"pollex.session", "", -1, "/", config.CookieDomain, config.CookieSecure, true)
 
@@ -88,7 +87,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		logger.LogError(err, "bind_json")
-		ErrorResponse(c, http.StatusBadRequest, "Invalid request format")
+		ErrorResponse(c, http.StatusBadRequest, "Invalid request")
 		logger.LogEnd(http.StatusBadRequest)
 		return
 	}
@@ -98,10 +97,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	user, err := h.AuthService.Register(c, input)
 
 	if err != nil {
-		// Map service errors to proper HTTP status codes
 		if errors.Is(err, util.ErrEmailExists) {
 			logger.LogError(err, "email_exists")
-			ErrorResponse(c, http.StatusConflict, "Email address already registered")
+			ErrorResponse(c, http.StatusConflict, "Email already registered")
 			logger.LogEnd(http.StatusConflict)
 			return
 		}
@@ -124,7 +122,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 }
 
-// Profile endpoint
 func (h *AuthHandler) Profile(c *gin.Context) {
 	logger := util.NewRequestLogger(c)
 
@@ -152,7 +149,6 @@ func (h *AuthHandler) Profile(c *gin.Context) {
 	logger.LogEnd(http.StatusOK, map[string]interface{}{"user_id": userId})
 }
 
-// Register auth routes
 func RegisterAuthRoutes(r *gin.Engine, queries *repository.Queries, config *util.Config) {
 
 	AuthService := service.NewAuthService(config, queries, service.NewTokenService(config))
@@ -162,7 +158,6 @@ func RegisterAuthRoutes(r *gin.Engine, queries *repository.Queries, config *util
 		authRoutes.POST("/login", handler.Login)
 		authRoutes.POST("/register", handler.Register)
 		authRoutes.POST("/logout", handler.Logout)
-		// authRoutes.GET("/profile", handler.Profile, )
 	}
 
 	userRoutes := r.Group("/user").Use(middleware.AuthMiddleware())

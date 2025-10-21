@@ -12,7 +12,6 @@ export function getPath(path: string) {
 
 /**
  * Parse error response from API
- * Validates response structure and extracts error message
  */
 export async function parseErrorResponse(
   response: Response,
@@ -25,7 +24,7 @@ export async function parseErrorResponse(
       return parsed.data;
     }
 
-    // Fallback if response doesn't match expected format
+    // fallback if response doesn't match
     return {
       message:
         (typeof json === "object" &&
@@ -36,7 +35,7 @@ export async function parseErrorResponse(
           : undefined) ?? "An error occurred",
     };
   } catch {
-    // Response wasn't JSON or couldn't be parsed
+    // wasn't JSON
     return {
       message: `Request failed with status ${response.status}`,
     };
@@ -44,8 +43,7 @@ export async function parseErrorResponse(
 }
 
 /**
- * Handle API errors with appropriate user feedback
- * Maps HTTP status codes to user actions
+ * Handle API errors
  */
 export async function handleApiError(
   response: Response,
@@ -59,14 +57,14 @@ export async function handleApiError(
 
   switch (response.status) {
     case 400:
-      // Bad request - validation error
+      // bad request
       if (showToast) {
         toast.error(error.message || "Invalid request");
       }
       break;
 
     case 401:
-      // Unauthorized - redirect to auth
+      // not logged in
       if (showToast) {
         toast.error("Please sign in to continue");
       }
@@ -74,14 +72,14 @@ export async function handleApiError(
       break;
 
     case 409:
-      // Conflict - duplicate resource
+      // conflict - already exists
       if (showToast) {
         toast.error(error.message || "Resource already exists");
       }
       break;
 
     case 500:
-      // Server error
+      // server error
       if (showToast) {
         toast.error("Server error. Please try again later.");
       }
@@ -97,8 +95,7 @@ export async function handleApiError(
 }
 
 /**
- * Wrapper for fetch with automatic error handling
- * Returns typed result for consistent error handling
+ * fetch wrapper with error handling
  */
 export async function apiFetch<T>(
   url: string | URL,
@@ -118,11 +115,11 @@ export async function apiFetch<T>(
     });
 
     if (!response.ok) {
-      const error = await handleApiError(response, {
+      const err = await handleApiError(response, {
         showToast: options?.showErrorToast ?? true,
         onUnauthorized: options?.onUnauthorized,
       });
-      return { success: false, error, status: response.status };
+      return { success: false, error: err, status: response.status };
     }
 
     const json: unknown = await response.json();
@@ -130,14 +127,13 @@ export async function apiFetch<T>(
 
     return { success: true, data };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Network error";
+    const errMsg = error instanceof Error ? error.message : "Network error";
     if (options?.showErrorToast ?? true) {
-      toast.error(errorMessage);
+      toast.error(errMsg);
     }
     return {
       success: false,
-      error: { message: errorMessage },
+      error: { message: errMsg },
       status: 0,
     };
   }

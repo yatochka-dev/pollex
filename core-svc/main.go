@@ -24,16 +24,15 @@ func mustPool(ctx context.Context, config *util.Config) *pgxpool.Pool {
 		panic(err)
 	}
 
-	// Reasonable starters; tune for your app:
-	cfg.MaxConns = 10 // cap concurrent conns
-	cfg.MinConns = 2  // keep a warm baseline
+	// connection pool settings
+	cfg.MaxConns = 10
+	cfg.MinConns = 2
 	cfg.MaxConnLifetime = time.Hour
 	cfg.MaxConnIdleTime = 10 * time.Minute
 	cfg.HealthCheckPeriod = time.Minute
 
-	// Tame statement cache to avoid "conn busy" errors
+	// this fixes the "conn busy" errors
 	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
-	// cfg.ConnConfig.StatementCacheCapacity = 0 // Lower capacity, or set to 0 to disable
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
@@ -49,11 +48,11 @@ func main() {
 	pool := mustPool(ctx, config)
 	repo := repository.New(pool)
 
-	// Disable Gin's default logging - we use our custom logger
+	// disable gin's logging - we use custom logger
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	// Custom recovery middleware with colored output
+	// recovery middleware with colors
 	r.Use(gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
 		log.Printf("%s[PANIC]%s %s%s %s%s | recovered=%v",
 			util.ColorRed+util.ColorBold,
@@ -67,18 +66,18 @@ func main() {
 		c.AbortWithStatus(500)
 	}))
 
+	// CORS config
 	corsCfg := cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "http://127.0.0.1:3000/"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true, // only with specific origins (config.AllowedOrigins)
+		AllowCredentials: true,
 		MaxAge:           time.Duration(config.AuthTokenLifespanHours) * time.Hour,
 	}
 
 	r.Use(cors.New(corsCfg))
 
-	// Startup message
 	log.Printf("%s[SERVER]%s Starting Pollex API on %s:8080%s",
 		util.ColorCyan+util.ColorBold,
 		util.ColorReset+util.ColorGreen,
@@ -86,13 +85,13 @@ func main() {
 		util.ColorReset,
 	)
 
-	// Deps
+	// setup deps
 	broker := pubsub.NewBroker()
 
-	// Services
+	// services
 	voteSvc := service.NewVotingService(repo, broker)
 
-	// routes AFTER middleware
+	// register routes
 	controllers.RegisterAuthRoutes(r, repo, config)
 
 	controllers.RegisterPollsRoutes(r, repo, config)

@@ -7,11 +7,11 @@ async function getUserVote(pollId: string) {
   const result = await apiFetch(getPath(`polls/votes/${pollId}/vote`), {
     method: "GET",
     parser: (data) => UserVoteResponseSchema.parse(data),
-    showErrorToast: false, // Don't show toast for "no vote" case
+    showErrorToast: false, // don't show toast for "no vote" case
   });
 
   if (!result.success) {
-    // Return null on error - user likely hasn't voted
+    // return null on error - user probably hasn't voted
     return { option_id: null };
   }
 
@@ -24,9 +24,9 @@ function useUserVote(pollId: string) {
   const q = useQuery({
     queryKey,
     queryFn: () => getUserVote(pollId),
-    enabled: !!sess.user?.id, // Only fetch when user is logged in
-    retry: false, // Don't retry on failure - user just hasn't voted
-    placeholderData: (previousData) => previousData, // Keep previous data while refetching to prevent UI flash
+    enabled: !!sess.user?.id, // only fetch when logged in
+    retry: false, // don't retry on failure
+    placeholderData: (previousData) => previousData, // keep previous data to prevent UI flash
   });
 
   return {
