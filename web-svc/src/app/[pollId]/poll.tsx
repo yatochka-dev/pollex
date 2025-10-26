@@ -175,38 +175,37 @@ export function PollCard({ pollId }: PollProps) {
             <CardTitle className="flex-1 text-2xl leading-tight font-bold text-balance">
               {poll.question}
             </CardTitle>
-            <div className="flex shrink-0 items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleShare}
-                className="shrink-0"
-                title="Share poll"
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
-              {viewerCount > 0 && (
-                <Badge
-                  variant="outline"
-                  className="gap-1.5 border-green-500/50 bg-green-500/10"
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-                  </span>
-                  <Users className="h-3 w-3" />
-                  {viewerCount} viewing
-                </Badge>
-              )}
-              {poll.closed && (
-                <Badge variant="secondary" className="shrink-0 gap-1.5">
-                  <Lock className="h-3 w-3" />
-                  Closed
-                </Badge>
-              )}
-            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleShare}
+              className="shrink-0 hover:bg-black/10"
+              title="Share poll"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
           </div>
-          <CardDescription className="flex items-center gap-4 text-sm">
+          <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+            {poll.closed && (
+              <Badge variant="secondary" className="gap-1.5">
+                <Lock className="h-3 w-3" />
+                Closed
+              </Badge>
+            )}
+            {viewerCount > 0 && (
+              <Badge
+                variant="outline"
+                className="gap-1.5 border-green-500/50 bg-green-500/10"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                </span>
+                <Users className="h-3 w-3" />
+                {viewerCount} viewing
+              </Badge>
+            )}
+            {(poll.closed || viewerCount > 0) && <span>•</span>}
             <span>{poll.totalVotes.toLocaleString()} votes</span>
             <span>•</span>
             <span>Created {formatDate(poll.createdAt)}</span>
