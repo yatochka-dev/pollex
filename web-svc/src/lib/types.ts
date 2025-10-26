@@ -30,6 +30,12 @@ export const UserSchema = z.object({
   id: z.string(),
   email: z.string().email(),
   name: z.string().min(2).max(100),
+  role: z.enum(["user", "admin"]),
+  email_verified_at: z
+    .string()
+    .transform((date) => new Date(date))
+    .nullable()
+    .optional(),
   created_at: z.string().transform((date) => new Date(date)),
 });
 
@@ -179,3 +185,192 @@ export type AsyncState<T> =
   | { status: "loading" }
   | { status: "success"; data: T }
   | { status: "error"; error: string };
+
+// ============================================================================
+// Admin Schemas
+// ============================================================================
+
+export const AdminUserSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().email(),
+  role: z.enum(["user", "admin"]),
+  email_verified_at: z
+    .string()
+    .transform((date) => new Date(date))
+    .nullable()
+    .optional(),
+  created_at: z.string().transform((date) => new Date(date)),
+});
+
+export type AdminUser = z.infer<typeof AdminUserSchema>;
+
+export const AdminUsersResponseSchema = z.object({
+  users: z.array(AdminUserSchema),
+  total: z.number(),
+  limit: z.number(),
+  offset: z.number(),
+});
+
+export type AdminUsersResponse = z.infer<typeof AdminUsersResponseSchema>;
+
+export const AdminPollSchema = z.object({
+  id: z.string(),
+  question: z.string(),
+  user_id: z.string(),
+  owner_name: z.string(),
+  owner_email: z.string(),
+  closed: z.boolean(),
+  created_at: z.string().transform((date) => new Date(date)),
+});
+
+export type AdminPoll = z.infer<typeof AdminPollSchema>;
+
+export const AdminPollsResponseSchema = z.object({
+  polls: z.array(AdminPollSchema),
+  total: z.number(),
+  limit: z.number(),
+  offset: z.number(),
+});
+
+export type AdminPollsResponse = z.infer<typeof AdminPollsResponseSchema>;
+
+export const AuditLogSchema = z.object({
+  id: z.string(),
+  actor_user_id: z.string(),
+  actor_name: z.string(),
+  actor_email: z.string(),
+  action: z.string(),
+  subject_type: z.string(),
+  subject_id: z.string().nullable(),
+  meta: z.record(z.unknown()).nullable(),
+  created_at: z.string().transform((date) => new Date(date)),
+});
+
+export type AuditLog = z.infer<typeof AuditLogSchema>;
+
+export const AuditLogsResponseSchema = z.object({
+  logs: z.array(AuditLogSchema),
+  total: z.number(),
+  limit: z.number(),
+  offset: z.number(),
+});
+
+export type AuditLogsResponse = z.infer<typeof AuditLogsResponseSchema>;
+
+export const UpdateUserRoleInputSchema = z.object({
+  role: z.enum(["user", "admin"]),
+});
+
+export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleInputSchema>;
+
+export const UpdateUserNameInputSchema = z.object({
+  name: z.string().min(2).max(100),
+});
+
+export type UpdateUserNameInput = z.infer<typeof UpdateUserNameInputSchema>;
+
+export const ResetPasswordInputSchema = z.object({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export type ResetPasswordInput = z.infer<typeof ResetPasswordInputSchema>;
+
+// ============================================================================
+// Email Verification Schemas
+// ============================================================================
+
+export const VerifyEmailInputSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  uid: z.string().uuid("Invalid user ID"),
+});
+
+export type VerifyEmailInput = z.infer<typeof VerifyEmailInputSchema>;
+
+export const VerifyEmailResponseSchema = z.object({
+  data: z.object({
+    message: z.string(),
+  }),
+});
+
+export type VerifyEmailResponse = z.infer<typeof VerifyEmailResponseSchema>;
+
+export const ResendVerificationResponseSchema = z.object({
+  data: z.object({
+    message: z.string(),
+  }),
+});
+
+export type ResendVerificationResponse = z.infer<
+  typeof ResendVerificationResponseSchema
+>;
+
+// ============================================================================
+// Password Reset Schemas
+// ============================================================================
+
+export const RequestPasswordResetInputSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+export type RequestPasswordResetInput = z.infer<
+  typeof RequestPasswordResetInputSchema
+>;
+
+export const RequestPasswordResetResponseSchema = z.object({
+  data: z.object({
+    message: z.string(),
+  }),
+});
+
+export type RequestPasswordResetResponse = z.infer<
+  typeof RequestPasswordResetResponseSchema
+>;
+
+export const ValidateResetTokenInputSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  uid: z.string().uuid("Invalid user ID"),
+});
+
+export type ValidateResetTokenInput = z.infer<
+  typeof ValidateResetTokenInputSchema
+>;
+
+export const ValidateResetTokenResponseSchema = z.object({
+  data: z.object({
+    message: z.string(),
+    valid: z.boolean(),
+  }),
+});
+
+export type ValidateResetTokenResponse = z.infer<
+  typeof ValidateResetTokenResponseSchema
+>;
+
+export const ResetPasswordWithTokenInputSchema = z
+  .object({
+    token: z.string().min(1, "Token is required"),
+    uid: z.string().uuid("Invalid user ID"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z
+      .string()
+      .min(8, "Password must be at least 8 characters"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export type ResetPasswordWithTokenInput = z.infer<
+  typeof ResetPasswordWithTokenInputSchema
+>;
+
+export const ResetPasswordWithTokenResponseSchema = z.object({
+  data: z.object({
+    message: z.string(),
+  }),
+});
+
+export type ResetPasswordWithTokenResponse = z.infer<
+  typeof ResetPasswordWithTokenResponseSchema
+>;

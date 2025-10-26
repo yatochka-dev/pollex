@@ -26,9 +26,33 @@ func (q *Queries) CheckEmailExists(ctx context.Context, email string) (bool, err
 	return exists, err
 }
 
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*) FROM app_user
+`
+
+// Admin: Count total users
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsersByRole = `-- name: CountUsersByRole :one
+SELECT COUNT(*) FROM app_user WHERE role = $1
+`
+
+// Admin: Count users by role
+func (q *Queries) CountUsersByRole(ctx context.Context, role UserRole) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersByRole, role)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO app_user (name, email, password_hash)
-VALUES ($1, $2, $3) RETURNING id, name, email, created_at
+VALUES ($1, $2, $3) RETURNING id, name, email, role, email_verified_at, created_at
 `
 
 type CreateUserParams struct {
@@ -38,10 +62,12 @@ type CreateUserParams struct {
 }
 
 type CreateUserRow struct {
-	ID        uuid.UUID          `json:"id"`
-	Name      string             `json:"name"`
-	Email     string             `json:"email"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID              uuid.UUID          `json:"id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	Role            UserRole           `json:"role"`
+	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -51,9 +77,21 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.ID,
 		&i.Name,
 		&i.Email,
+		&i.Role,
+		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM app_user WHERE id = $1
+`
+
+// Admin: Delete user
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
+	return err
 }
 
 const getPasswordHashByEmail = `-- name: GetPasswordHashByEmail :one
@@ -74,15 +112,17 @@ func (q *Queries) GetPasswordHashByEmail(ctx context.Context, email string) (Get
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, created_at FROM app_user
+SELECT id, name, email, role, email_verified_at, created_at FROM app_user
 WHERE email = $1 LIMIT 1
 `
 
 type GetUserByEmailRow struct {
-	ID        uuid.UUID          `json:"id"`
-	Name      string             `json:"name"`
-	Email     string             `json:"email"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID              uuid.UUID          `json:"id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	Role            UserRole           `json:"role"`
+	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
@@ -92,25 +132,27 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 		&i.ID,
 		&i.Name,
 		&i.Email,
+		&i.Role,
+		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-
-SELECT id, name, email, created_at FROM app_user
+SELECT id, name, email, role, email_verified_at, created_at FROM app_user
 WHERE id = $1 LIMIT 1
 `
 
 type GetUserByIDRow struct {
-	ID        uuid.UUID          `json:"id"`
-	Name      string             `json:"name"`
-	Email     string             `json:"email"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID              uuid.UUID          `json:"id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	Role            UserRole           `json:"role"`
+	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
-// id, email, created_at
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i GetUserByIDRow
@@ -118,6 +160,230 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 		&i.ID,
 		&i.Name,
 		&i.Email,
+		&i.Role,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserWithPasswordByID = `-- name: GetUserWithPasswordByID :one
+SELECT id, name, email, role, password_hash, email_verified_at, created_at
+FROM app_user
+WHERE id = $1 LIMIT 1
+`
+
+type GetUserWithPasswordByIDRow struct {
+	ID              uuid.UUID          `json:"id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	Role            UserRole           `json:"role"`
+	PasswordHash    string             `json:"password_hash"`
+	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+// Admin: Get user with password hash (for authentication)
+func (q *Queries) GetUserWithPasswordByID(ctx context.Context, id uuid.UUID) (GetUserWithPasswordByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserWithPasswordByID, id)
+	var i GetUserWithPasswordByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Role,
+		&i.PasswordHash,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const isUserAdmin = `-- name: IsUserAdmin :one
+SELECT role = 'admin' AS is_admin FROM app_user WHERE id = $1
+`
+
+// Admin: Check if user is admin
+func (q *Queries) IsUserAdmin(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserAdmin, id)
+	var is_admin bool
+	err := row.Scan(&is_admin)
+	return is_admin, err
+}
+
+const listAllUsers = `-- name: ListAllUsers :many
+SELECT id, name, email, role, email_verified_at, created_at
+FROM app_user
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListAllUsersParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListAllUsersRow struct {
+	ID              uuid.UUID          `json:"id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	Role            UserRole           `json:"role"`
+	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+// Admin: List all users with pagination
+func (q *Queries) ListAllUsers(ctx context.Context, arg ListAllUsersParams) ([]ListAllUsersRow, error) {
+	rows, err := q.db.Query(ctx, listAllUsers, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllUsersRow
+	for rows.Next() {
+		var i ListAllUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.Role,
+			&i.EmailVerifiedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setEmailVerificationStatus = `-- name: SetEmailVerificationStatus :one
+UPDATE app_user
+SET email_verified_at = CASE
+    WHEN $2 = true THEN COALESCE(email_verified_at, NOW())
+    WHEN $2 = false THEN NULL
+    ELSE email_verified_at
+END
+WHERE id = $1
+RETURNING id, name, email, role, email_verified_at, created_at
+`
+
+type SetEmailVerificationStatusParams struct {
+	ID      uuid.UUID   `json:"id"`
+	Column2 interface{} `json:"column_2"`
+}
+
+type SetEmailVerificationStatusRow struct {
+	ID              uuid.UUID          `json:"id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	Role            UserRole           `json:"role"`
+	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+// Admin: Toggle email verification status
+func (q *Queries) SetEmailVerificationStatus(ctx context.Context, arg SetEmailVerificationStatusParams) (SetEmailVerificationStatusRow, error) {
+	row := q.db.QueryRow(ctx, setEmailVerificationStatus, arg.ID, arg.Column2)
+	var i SetEmailVerificationStatusRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Role,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateUserName = `-- name: UpdateUserName :one
+UPDATE app_user
+SET name = $2
+WHERE id = $1
+RETURNING id, name, email, role, email_verified_at, created_at
+`
+
+type UpdateUserNameParams struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+type UpdateUserNameRow struct {
+	ID              uuid.UUID          `json:"id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	Role            UserRole           `json:"role"`
+	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+// Admin: Update user name
+func (q *Queries) UpdateUserName(ctx context.Context, arg UpdateUserNameParams) (UpdateUserNameRow, error) {
+	row := q.db.QueryRow(ctx, updateUserName, arg.ID, arg.Name)
+	var i UpdateUserNameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Role,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateUserPasswordHash = `-- name: UpdateUserPasswordHash :exec
+UPDATE app_user
+SET password_hash = $2
+WHERE id = $1
+`
+
+type UpdateUserPasswordHashParams struct {
+	ID           uuid.UUID `json:"id"`
+	PasswordHash string    `json:"password_hash"`
+}
+
+// Admin: Update user password hash
+func (q *Queries) UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error {
+	_, err := q.db.Exec(ctx, updateUserPasswordHash, arg.ID, arg.PasswordHash)
+	return err
+}
+
+const updateUserRole = `-- name: UpdateUserRole :one
+UPDATE app_user
+SET role = $2
+WHERE id = $1
+RETURNING id, name, email, role, email_verified_at, created_at
+`
+
+type UpdateUserRoleParams struct {
+	ID   uuid.UUID `json:"id"`
+	Role UserRole  `json:"role"`
+}
+
+type UpdateUserRoleRow struct {
+	ID              uuid.UUID          `json:"id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	Role            UserRole           `json:"role"`
+	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+// Admin: Update user role
+func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (UpdateUserRoleRow, error) {
+	row := q.db.QueryRow(ctx, updateUserRole, arg.ID, arg.Role)
+	var i UpdateUserRoleRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Role,
+		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 	)
 	return i, err

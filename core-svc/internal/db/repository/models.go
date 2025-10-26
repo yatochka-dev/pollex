@@ -5,16 +5,106 @@
 package repository
 
 import (
+	"database/sql/driver"
+	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type UserRole string
+
+const (
+	UserRoleUser  UserRole = "user"
+	UserRoleAdmin UserRole = "admin"
+)
+
+func (e *UserRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = UserRole(s)
+	case string:
+		*e = UserRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for UserRole: %T", src)
+	}
+	return nil
+}
+
+type NullUserRole struct {
+	UserRole UserRole `json:"user_role"`
+	Valid    bool     `json:"valid"` // Valid is true if UserRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullUserRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.UserRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.UserRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullUserRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.UserRole), nil
+}
+
 type AppUser struct {
-	ID           uuid.UUID          `json:"id"`
-	Name         string             `json:"name"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ID              uuid.UUID          `json:"id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	PasswordHash    string             `json:"password_hash"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	Role            UserRole           `json:"role"`
+	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
+}
+
+// Tracks all administrative actions for accountability and debugging
+type AuditLog struct {
+	ID uuid.UUID `json:"id"`
+	// The user who performed the action
+	ActorUserID uuid.UUID `json:"actor_user_id"`
+	// Action performed (e.g., user.delete, poll.close, user.role_change)
+	Action string `json:"action"`
+	// Type of resource affected (e.g., user, poll)
+	SubjectType string `json:"subject_type"`
+	// ID of the resource affected
+	SubjectID pgtype.UUID `json:"subject_id"`
+	// Additional context data (JSON)
+	Meta      []byte    `json:"meta"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Stores one-time tokens for email verification
+type EmailVerifyToken struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+	// SHA-256 hash of the verification token
+	TokenHash string `json:"token_hash"`
+	// Token expiration time (24 hours from creation)
+	ExpiresAt time.Time `json:"expires_at"`
+	// Timestamp when token was used (null if unused)
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt time.Time          `json:"created_at"`
+}
+
+// Stores one-time tokens for password reset
+type PasswordResetToken struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+	// SHA-256 hash of the reset token
+	TokenHash string `json:"token_hash"`
+	// Token expiration time (24 hours from creation)
+	ExpiresAt time.Time `json:"expires_at"`
+	// Timestamp when token was used (null if unused)
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt time.Time          `json:"created_at"`
 }
 
 type Poll struct {
@@ -23,6 +113,8 @@ type Poll struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UserID    uuid.UUID          `json:"user_id"`
 	Closed    bool               `json:"closed"`
+	// Optional expiration time for the poll (null means no expiration)
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 }
 
 type PollOption struct {
@@ -30,6 +122,8 @@ type PollOption struct {
 	PollID    uuid.UUID          `json:"poll_id"`
 	Label     string             `json:"label"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	// Cached count of votes for this option (updated on vote)
+	VoteCount int32 `json:"vote_count"`
 }
 
 type Vote struct {

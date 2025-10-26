@@ -56,6 +56,22 @@ func (h *PollsHandler) Create(c *gin.Context) {
 	logger.SetUserID(userId)
 	logger.LogStart(map[string]interface{}{"question": data.Question, "options_count": len(data.Options)})
 
+	// Check if user's email is verified
+	user, err := h.Queries.GetUserByID(c.Request.Context(), userId)
+	if err != nil {
+		logger.LogError(err, "get_user_by_id")
+		ErrorResponse(c, http.StatusInternalServerError, "Failed to verify user status")
+		logger.LogEnd(http.StatusInternalServerError)
+		return
+	}
+
+	if !user.EmailVerifiedAt.Valid {
+		logger.LogError(nil, "email_not_verified")
+		ErrorResponse(c, http.StatusForbidden, "Email verification required. Please verify your email before creating polls.")
+		logger.LogEnd(http.StatusForbidden)
+		return
+	}
+
 	p, err := h.Queries.CreatePollWithOptions(c.Request.Context(), repository.CreatePollWithOptionsParams{
 		Question: data.Question,
 		UserID:   userId,
@@ -158,9 +174,9 @@ func (h *PollsHandler) GetUserPolls(c *gin.Context) {
 	logger.LogEnd(http.StatusOK, map[string]interface{}{"polls_count": len(polls)})
 }
 
-func RegisterPollsRoutes(r *gin.Engine, queries *repository.Queries, config *util.Config) {
+func RegisterPollsRoutes(r *gin.Engine, queries *repository.Queries, config *util.Config, emailService *service.EmailService) {
 
-	AuthService := service.NewAuthService(config, queries, service.NewTokenService(config))
+	AuthService := service.NewAuthService(config, queries, service.NewTokenService(config), emailService)
 	handler := NewPollsHandler(queries, AuthService)
 
 	pollsRoutes := r.Group("/polls").Use(middleware.AuthMiddleware())

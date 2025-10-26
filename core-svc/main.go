@@ -90,13 +90,19 @@ func main() {
 
 	// services
 	voteSvc := service.NewVotingService(repo, broker)
+	emailSvc := service.NewEmailService(repo, config.ResendAPIKey)
+	// pollSvc := service.NewPollService(repo) // TODO: Use this for poll lifecycle features
 
 	// register routes
-	controllers.RegisterAuthRoutes(r, repo, config)
+	controllers.RegisterAuthRoutes(r, repo, config, emailSvc)
 
-	controllers.RegisterPollsRoutes(r, repo, config)
+	controllers.RegisterPollsRoutes(r, repo, config, emailSvc)
 
 	controllers.RegisterVoteRoutes(r, voteSvc, broker)
+
+	controllers.RegisterAdminRoutes(r, repo, config)
+
+	controllers.RegisterEmailRoutes(r, repo, emailSvc)
 
 	if err := r.Run(":8080"); err != nil {
 		panic(err)

@@ -1,5 +1,5 @@
 "use client";
-import { LogIn, LogOut, User } from "lucide-react";
+import { LogIn, LogOut, User, Shield } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "~/components/ui/button";
@@ -31,6 +31,17 @@ export function Header() {
             <span className="text-muted-foreground text-sm font-medium">
               {user?.name}
             </span>
+            {user?.role === "admin" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="cursor-pointer"
+                onClick={() => router.push("/admin")}
+                title="Admin Dashboard"
+              >
+                <Shield className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"

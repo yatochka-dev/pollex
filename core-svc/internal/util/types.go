@@ -21,4 +21,7 @@ var (
 	ErrUserNotFound       = errors.New("user not found")
 	ErrInvalidInput       = errors.New("invalid input")
 	ErrUnauthorized       = errors.New("unauthorized")
+	ErrLastAdmin          = errors.New("cannot demote or delete the last admin")
+	ErrInsufficientPerms  = errors.New("insufficient permissions")
+	ErrPollNotFound       = errors.New("poll not found")
 )
