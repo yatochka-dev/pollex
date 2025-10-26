@@ -11,6 +11,7 @@ type AuthService struct {
 	Config       *util.Config
 	Queries      *repository.Queries
 	TokenService *TokenService
+	EmailService *EmailService
 }
 
 // constructor
@@ -18,12 +19,13 @@ func NewAuthService(
 	config *util.Config,
 	queries *repository.Queries,
 	tokenService *TokenService,
-
+	emailService *EmailService,
 ) *AuthService {
 	return &AuthService{
 		Config:       config,
 		Queries:      queries,
 		TokenService: tokenService,
+		EmailService: emailService,
 	}
 }
 
@@ -110,11 +112,22 @@ func (a *AuthService) Register(c *gin.Context, input RegisterInput) (repository.
 		return repository.GetUserByIDRow{}, err
 	}
 
+	// Send verification email (don't fail registration if email fails)
+	if a.EmailService != nil {
+		err = a.EmailService.SendVerificationEmail(c.Request.Context(), user.ID, user.Email, user.Name)
+		if err != nil {
+			// Log error but don't fail registration
+			// User can request resend later
+		}
+	}
+
 	return repository.GetUserByIDRow{
-		ID:        user.ID,
-		Name:      user.Name,
-		Email:     user.Email,
-		CreatedAt: user.CreatedAt,
+		ID:              user.ID,
+		Name:            user.Name,
+		Email:           user.Email,
+		Role:            user.Role,
+		EmailVerifiedAt: user.EmailVerifiedAt,
+		CreatedAt:       user.CreatedAt,
 	}, nil
 
 }

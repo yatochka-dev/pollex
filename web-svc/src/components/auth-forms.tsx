@@ -5,6 +5,7 @@
 import type React from "react";
 import { useState } from "react";
 import { useQueryState } from "nuqs";
+import Link from "next/link";
 
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -63,10 +64,24 @@ export function AuthForms() {
       formType === "login"
         ? { email: "", password: "" }
         : { username: "", email: "", password: "", confirmPassword: "" },
-    validators: {
-      onChange: formType === "login" ? loginSchema : registerSchema,
-    },
     onSubmit: async ({ value }) => {
+      // Validate before submission
+      if (formType === "register") {
+        const validation = registerSchema.safeParse(value);
+        if (!validation.success) {
+          const firstError = validation.error.errors[0];
+          toast.error(firstError?.message || "Please check your inputs");
+          return;
+        }
+      } else {
+        const validation = loginSchema.safeParse(value);
+        if (!validation.success) {
+          const firstError = validation.error.errors[0];
+          toast.error(firstError?.message || "Please check your inputs");
+          return;
+        }
+      }
+
       setIsSubmitting(true);
       try {
         if (formType === "login") {
@@ -84,7 +99,12 @@ export function AuthForms() {
           });
 
           if (result.data?.name) {
-            toast.success(`Welcome, ${result.data.name}!`);
+            toast.success(
+              `Welcome, ${result.data.name}! Please check your email to verify your account.`,
+              {
+                duration: 6000,
+              },
+            );
           }
 
           // Immediately log them in
@@ -246,9 +266,19 @@ export function AuthForms() {
               // eslint-disable-next-line react/no-children-prop
               children={(field) => (
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">
-                    Password
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-sm font-medium">
+                      Password
+                    </Label>
+                    {formType === "login" && (
+                      <Link
+                        href="/forgot-password"
+                        className="text-xs text-zinc-400 underline underline-offset-4 hover:text-zinc-300"
+                      >
+                        Forgot password?
+                      </Link>
+                    )}
+                  </div>
                   <div className="relative">
                     <Input
                       id="password"
@@ -359,7 +389,7 @@ export function AuthForms() {
             <Button
               type="submit"
               className="w-full bg-zinc-100 font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!form.state.isValid || isSubmitting}
+              disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>

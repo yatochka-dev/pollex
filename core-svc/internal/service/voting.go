@@ -25,6 +25,16 @@ func NewVotingService(queries *repository.Queries, broker *pubsub.Broker) *Votin
 }
 
 func (s *VotingService) Vote(c *gin.Context, optionId uuid.UUID, userId uuid.UUID) error {
+	// Check if user's email is verified
+	user, err := s.Queries.GetUserByID(c, userId)
+	if err != nil {
+		return err
+	}
+
+	if !user.EmailVerifiedAt.Valid {
+		return errors.New("email verification required. Please verify your email before voting")
+	}
+
 	vote, err := s.Queries.CreateVote(c, repository.CreateVoteParams{UserID: userId, OptionID: optionId})
 
 	if err != nil {

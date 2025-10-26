@@ -12,19 +12,79 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const autoCloseExpiredPolls = `-- name: AutoCloseExpiredPolls :exec
+UPDATE poll
+SET closed = true
+WHERE expires_at IS NOT NULL
+  AND expires_at <= NOW()
+  AND closed = false
+`
+
+// Auto-close expired polls
+func (q *Queries) AutoCloseExpiredPolls(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, autoCloseExpiredPolls)
+	return err
+}
+
+const closePoll = `-- name: ClosePoll :one
+UPDATE poll
+SET closed = true
+WHERE id = $1
+RETURNING id, question, created_at, user_id, closed, expires_at
+`
+
+// Admin: Close a poll
+func (q *Queries) ClosePoll(ctx context.Context, id uuid.UUID) (Poll, error) {
+	row := q.db.QueryRow(ctx, closePoll, id)
+	var i Poll
+	err := row.Scan(
+		&i.ID,
+		&i.Question,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.Closed,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const countPolls = `-- name: CountPolls :one
+SELECT COUNT(*) FROM poll
+`
+
+// Admin: Count total polls
+func (q *Queries) CountPolls(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countPolls)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPollsByStatus = `-- name: CountPollsByStatus :one
+SELECT COUNT(*) FROM poll WHERE closed = $1
+`
+
+// Admin: Count polls by status
+func (q *Queries) CountPollsByStatus(ctx context.Context, closed bool) (int64, error) {
+	row := q.db.QueryRow(ctx, countPollsByStatus, closed)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createPollWithOptions = `-- name: CreatePollWithOptions :one
 WITH new_poll AS (
-INSERT INTO poll (question, user_id)
-VALUES ($1, $2)
-    RETURNING id, question, user_id, created_at, closed
+INSERT INTO poll (question, user_id, expires_at)
+VALUES ($1, $2, $3)
+    RETURNING id, question, user_id, created_at, closed, expires_at
     ),
     ins_opts AS (
 INSERT INTO poll_option (poll_id, label)
 SELECT np.id, o::text
 FROM new_poll np
-    CROSS JOIN unnest($3::text[]) AS o
+    CROSS JOIN unnest($4::text[]) AS o
     )
-SELECT p.id, p.question, p.user_id, p.created_at, p.closed,
+SELECT p.id, p.question, p.user_id, p.created_at, p.closed, p.expires_at,
        ARRAY(
            SELECT po.label
          FROM poll_option po
@@ -35,9 +95,10 @@ FROM new_poll p
 `
 
 type CreatePollWithOptionsParams struct {
-	Question string    `json:"question"`
-	UserID   uuid.UUID `json:"user_id"`
-	Options  []string  `json:"options"`
+	Question  string             `json:"question"`
+	UserID    uuid.UUID          `json:"user_id"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	Options   []string           `json:"options"`
 }
 
 type CreatePollWithOptionsRow struct {
@@ -46,11 +107,17 @@ type CreatePollWithOptionsRow struct {
 	UserID    uuid.UUID          `json:"user_id"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	Closed    bool               `json:"closed"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	Options   interface{}        `json:"options"`
 }
 
 func (q *Queries) CreatePollWithOptions(ctx context.Context, arg CreatePollWithOptionsParams) (CreatePollWithOptionsRow, error) {
-	row := q.db.QueryRow(ctx, createPollWithOptions, arg.Question, arg.UserID, arg.Options)
+	row := q.db.QueryRow(ctx, createPollWithOptions,
+		arg.Question,
+		arg.UserID,
+		arg.ExpiresAt,
+		arg.Options,
+	)
 	var i CreatePollWithOptionsRow
 	err := row.Scan(
 		&i.ID,
@@ -58,13 +125,81 @@ func (q *Queries) CreatePollWithOptions(ctx context.Context, arg CreatePollWithO
 		&i.UserID,
 		&i.CreatedAt,
 		&i.Closed,
+		&i.ExpiresAt,
 		&i.Options,
 	)
 	return i, err
 }
 
+const decrementOptionVoteCount = `-- name: DecrementOptionVoteCount :exec
+UPDATE poll_option
+SET vote_count = vote_count - 1
+WHERE id = $1 AND vote_count > 0
+`
+
+// Decrement vote count for option (for vote changes)
+func (q *Queries) DecrementOptionVoteCount(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, decrementOptionVoteCount, id)
+	return err
+}
+
+const deletePoll = `-- name: DeletePoll :exec
+DELETE FROM poll WHERE id = $1
+`
+
+// Admin: Delete a poll (cascade will handle options and votes)
+func (q *Queries) DeletePoll(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deletePoll, id)
+	return err
+}
+
+const getExpiredPolls = `-- name: GetExpiredPolls :many
+SELECT id, question, user_id, created_at, closed, expires_at
+FROM poll
+WHERE expires_at IS NOT NULL
+  AND expires_at <= NOW()
+  AND closed = false
+`
+
+type GetExpiredPollsRow struct {
+	ID        uuid.UUID          `json:"id"`
+	Question  string             `json:"question"`
+	UserID    uuid.UUID          `json:"user_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Closed    bool               `json:"closed"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+// Get expired polls that aren't closed
+func (q *Queries) GetExpiredPolls(ctx context.Context) ([]GetExpiredPollsRow, error) {
+	rows, err := q.db.Query(ctx, getExpiredPolls)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExpiredPollsRow
+	for rows.Next() {
+		var i GetExpiredPollsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Question,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.Closed,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPollByID = `-- name: GetPollByID :one
-SELECT id, question, created_at, user_id, closed FROM poll
+SELECT id, question, created_at, user_id, closed, expires_at FROM poll
 WHERE id = $1 LIMIT 1
 `
 
@@ -77,12 +212,25 @@ func (q *Queries) GetPollByID(ctx context.Context, id uuid.UUID) (Poll, error) {
 		&i.CreatedAt,
 		&i.UserID,
 		&i.Closed,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
 
+const getPollOwnerID = `-- name: GetPollOwnerID :one
+SELECT user_id FROM poll WHERE id = $1
+`
+
+// Get poll owner ID
+func (q *Queries) GetPollOwnerID(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getPollOwnerID, id)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const getPollWithOptions = `-- name: GetPollWithOptions :one
-SELECT p.id, p.question, p.created_at, p.user_id, p.closed,
+SELECT p.id, p.question, p.created_at, p.user_id, p.closed, p.expires_at,
        ARRAY(
            SELECT po.label
          FROM poll_option po
@@ -99,6 +247,7 @@ type GetPollWithOptionsRow struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UserID    uuid.UUID          `json:"user_id"`
 	Closed    bool               `json:"closed"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	Options   interface{}        `json:"options"`
 }
 
@@ -111,13 +260,58 @@ func (q *Queries) GetPollWithOptions(ctx context.Context, id uuid.UUID) (GetPoll
 		&i.CreatedAt,
 		&i.UserID,
 		&i.Closed,
+		&i.ExpiresAt,
+		&i.Options,
+	)
+	return i, err
+}
+
+const getPollWithVoteCounts = `-- name: GetPollWithVoteCounts :one
+SELECT p.id, p.question, p.user_id, p.created_at, p.closed, p.expires_at,
+       COALESCE(
+           json_agg(
+               json_build_object(
+                   'id', po.id,
+                   'label', po.label,
+                   'vote_count', po.vote_count
+               ) ORDER BY po.id
+           ) FILTER (WHERE po.id IS NOT NULL),
+           '[]'::json
+       ) AS options
+FROM poll p
+LEFT JOIN poll_option po ON po.poll_id = p.id
+WHERE p.id = $1
+GROUP BY p.id
+`
+
+type GetPollWithVoteCountsRow struct {
+	ID        uuid.UUID          `json:"id"`
+	Question  string             `json:"question"`
+	UserID    uuid.UUID          `json:"user_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Closed    bool               `json:"closed"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	Options   interface{}        `json:"options"`
+}
+
+// Get poll with vote counts
+func (q *Queries) GetPollWithVoteCounts(ctx context.Context, id uuid.UUID) (GetPollWithVoteCountsRow, error) {
+	row := q.db.QueryRow(ctx, getPollWithVoteCounts, id)
+	var i GetPollWithVoteCountsRow
+	err := row.Scan(
+		&i.ID,
+		&i.Question,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.Closed,
+		&i.ExpiresAt,
 		&i.Options,
 	)
 	return i, err
 }
 
 const getPollsByUserID = `-- name: GetPollsByUserID :many
-SELECT id, question, created_at, user_id, closed FROM poll
+SELECT id, question, created_at, user_id, closed, expires_at FROM poll
 WHERE user_id = $1
 ORDER BY created_at DESC
 `
@@ -137,6 +331,111 @@ func (q *Queries) GetPollsByUserID(ctx context.Context, userID uuid.UUID) ([]Pol
 			&i.CreatedAt,
 			&i.UserID,
 			&i.Closed,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const incrementOptionVoteCount = `-- name: IncrementOptionVoteCount :exec
+UPDATE poll_option
+SET vote_count = vote_count + 1
+WHERE id = $1
+`
+
+// Increment vote count for option
+func (q *Queries) IncrementOptionVoteCount(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, incrementOptionVoteCount, id)
+	return err
+}
+
+type InsertPollOptionsParams struct {
+	PollID uuid.UUID `json:"poll_id"`
+	Label  string    `json:"label"`
+}
+
+const isPollClosedOrExpired = `-- name: IsPollClosedOrExpired :one
+SELECT closed OR (expires_at IS NOT NULL AND expires_at <= NOW()) AS is_closed
+FROM poll
+WHERE id = $1
+`
+
+// Check if poll is closed or expired
+func (q *Queries) IsPollClosedOrExpired(ctx context.Context, id uuid.UUID) (pgtype.Bool, error) {
+	row := q.db.QueryRow(ctx, isPollClosedOrExpired, id)
+	var is_closed pgtype.Bool
+	err := row.Scan(&is_closed)
+	return is_closed, err
+}
+
+const isPollOwner = `-- name: IsPollOwner :one
+SELECT user_id = $2 AS is_owner
+FROM poll
+WHERE id = $1
+`
+
+type IsPollOwnerParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+// Check if user owns poll
+func (q *Queries) IsPollOwner(ctx context.Context, arg IsPollOwnerParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isPollOwner, arg.ID, arg.UserID)
+	var is_owner bool
+	err := row.Scan(&is_owner)
+	return is_owner, err
+}
+
+const listAllPolls = `-- name: ListAllPolls :many
+SELECT p.id, p.question, p.created_at, p.user_id, p.closed, p.expires_at, u.name as owner_name, u.email as owner_email
+FROM poll p
+LEFT JOIN app_user u ON p.user_id = u.id
+ORDER BY p.created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListAllPollsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListAllPollsRow struct {
+	ID         uuid.UUID          `json:"id"`
+	Question   string             `json:"question"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UserID     uuid.UUID          `json:"user_id"`
+	Closed     bool               `json:"closed"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	OwnerName  pgtype.Text        `json:"owner_name"`
+	OwnerEmail pgtype.Text        `json:"owner_email"`
+}
+
+// Admin: List all polls with pagination
+func (q *Queries) ListAllPolls(ctx context.Context, arg ListAllPollsParams) ([]ListAllPollsRow, error) {
+	rows, err := q.db.Query(ctx, listAllPolls, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllPollsRow
+	for rows.Next() {
+		var i ListAllPollsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Question,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.Closed,
+			&i.ExpiresAt,
+			&i.OwnerName,
+			&i.OwnerEmail,
 		); err != nil {
 			return nil, err
 		}
@@ -149,7 +448,7 @@ func (q *Queries) GetPollsByUserID(ctx context.Context, userID uuid.UUID) ([]Pol
 }
 
 const listOptionsByPollID = `-- name: ListOptionsByPollID :many
-SELECT id, poll_id, label, created_at FROM poll_option WHERE poll_id = $1
+SELECT id, poll_id, label, created_at, vote_count FROM poll_option WHERE poll_id = $1
 `
 
 func (q *Queries) ListOptionsByPollID(ctx context.Context, pollID uuid.UUID) ([]PollOption, error) {
@@ -166,6 +465,7 @@ func (q *Queries) ListOptionsByPollID(ctx context.Context, pollID uuid.UUID) ([]
 			&i.PollID,
 			&i.Label,
 			&i.CreatedAt,
+			&i.VoteCount,
 		); err != nil {
 			return nil, err
 		}
@@ -175,4 +475,161 @@ func (q *Queries) ListOptionsByPollID(ctx context.Context, pollID uuid.UUID) ([]
 		return nil, err
 	}
 	return items, nil
+}
+
+const listPollsByStatus = `-- name: ListPollsByStatus :many
+SELECT p.id, p.question, p.created_at, p.user_id, p.closed, p.expires_at, u.name as owner_name, u.email as owner_email
+FROM poll p
+LEFT JOIN app_user u ON p.user_id = u.id
+WHERE p.closed = $1
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListPollsByStatusParams struct {
+	Closed bool  `json:"closed"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListPollsByStatusRow struct {
+	ID         uuid.UUID          `json:"id"`
+	Question   string             `json:"question"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UserID     uuid.UUID          `json:"user_id"`
+	Closed     bool               `json:"closed"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	OwnerName  pgtype.Text        `json:"owner_name"`
+	OwnerEmail pgtype.Text        `json:"owner_email"`
+}
+
+// Admin: List polls by status
+func (q *Queries) ListPollsByStatus(ctx context.Context, arg ListPollsByStatusParams) ([]ListPollsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, listPollsByStatus, arg.Closed, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPollsByStatusRow
+	for rows.Next() {
+		var i ListPollsByStatusRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Question,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.Closed,
+			&i.ExpiresAt,
+			&i.OwnerName,
+			&i.OwnerEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pollHasVotes = `-- name: PollHasVotes :one
+SELECT EXISTS(
+    SELECT 1 FROM votes
+    WHERE poll_id = $1
+) AS has_votes
+`
+
+// Check if poll has any votes
+func (q *Queries) PollHasVotes(ctx context.Context, pollID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, pollHasVotes, pollID)
+	var has_votes bool
+	err := row.Scan(&has_votes)
+	return has_votes, err
+}
+
+const reopenPoll = `-- name: ReopenPoll :one
+UPDATE poll
+SET closed = false
+WHERE id = $1
+RETURNING id, question, created_at, user_id, closed, expires_at
+`
+
+// Admin: Reopen a poll
+func (q *Queries) ReopenPoll(ctx context.Context, id uuid.UUID) (Poll, error) {
+	row := q.db.QueryRow(ctx, reopenPoll, id)
+	var i Poll
+	err := row.Scan(
+		&i.ID,
+		&i.Question,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.Closed,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const updatePollExpiration = `-- name: UpdatePollExpiration :one
+UPDATE poll
+SET expires_at = $2
+WHERE id = $1
+RETURNING id, question, created_at, user_id, closed, expires_at
+`
+
+type UpdatePollExpirationParams struct {
+	ID        uuid.UUID          `json:"id"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+// Update poll expiration
+func (q *Queries) UpdatePollExpiration(ctx context.Context, arg UpdatePollExpirationParams) (Poll, error) {
+	row := q.db.QueryRow(ctx, updatePollExpiration, arg.ID, arg.ExpiresAt)
+	var i Poll
+	err := row.Scan(
+		&i.ID,
+		&i.Question,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.Closed,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const updatePollOptions = `-- name: UpdatePollOptions :exec
+DELETE FROM poll_option WHERE poll_id = $1
+`
+
+// Update poll options (only if no votes)
+func (q *Queries) UpdatePollOptions(ctx context.Context, pollID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, updatePollOptions, pollID)
+	return err
+}
+
+const updatePollQuestion = `-- name: UpdatePollQuestion :one
+UPDATE poll
+SET question = $2
+WHERE id = $1
+RETURNING id, question, created_at, user_id, closed, expires_at
+`
+
+type UpdatePollQuestionParams struct {
+	ID       uuid.UUID `json:"id"`
+	Question string    `json:"question"`
+}
+
+// Update poll question (only if no votes)
+func (q *Queries) UpdatePollQuestion(ctx context.Context, arg UpdatePollQuestionParams) (Poll, error) {
+	row := q.db.QueryRow(ctx, updatePollQuestion, arg.ID, arg.Question)
+	var i Poll
+	err := row.Scan(
+		&i.ID,
+		&i.Question,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.Closed,
+		&i.ExpiresAt,
+	)
+	return i, err
 }
