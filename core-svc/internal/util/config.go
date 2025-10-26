@@ -13,6 +13,8 @@ type Config struct {
 	AllowedOrigins         []string
 	CookieDomain           string
 	CookieSecure           bool
+	ResendAPIKey           string
+	AppBaseURL             string
 }
 
 func LoadEnvironment() {
@@ -33,6 +35,11 @@ func NewConfig() *Config {
 		cookieDomain = "localhost" // fallback for dev
 	}
 
+	appBaseURL := os.Getenv("APP_BASE_URL")
+	if appBaseURL == "" {
+		appBaseURL = "http://localhost:3000" // fallback for dev
+	}
+
 	return &Config{
 		DatabaseUrl:            os.Getenv("DATABASE_URL"),
 		AuthTokenLifespanHours: 24,
@@ -40,5 +47,7 @@ func NewConfig() *Config {
 		AllowedOrigins:         []string{"http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3000/", "http://127.0.0.1:3000/"},
 		CookieDomain:           cookieDomain,
 		CookieSecure:           cookieSecure,
+		ResendAPIKey:           os.Getenv("RESEND_API_KEY"),
+		AppBaseURL:             appBaseURL,
 	}
 }

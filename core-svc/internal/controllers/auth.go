@@ -114,10 +114,10 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		util.ColorCyan, input.Email, util.ColorReset,
 		util.ColorCyan, input.Name, util.ColorReset,
 		util.ColorMagenta, user.ID, util.ColorReset)
-	Response(c, gin.H{
+	c.JSON(http.StatusCreated, gin.H{
 		"data":  user,
 		"isNew": true,
-	}, http.StatusCreated)
+	})
 	logger.LogEnd(http.StatusCreated, map[string]interface{}{"user_id": user.ID})
 
 }
@@ -149,9 +149,9 @@ func (h *AuthHandler) Profile(c *gin.Context) {
 	logger.LogEnd(http.StatusOK, map[string]interface{}{"user_id": userId})
 }
 
-func RegisterAuthRoutes(r *gin.Engine, queries *repository.Queries, config *util.Config) {
+func RegisterAuthRoutes(r *gin.Engine, queries *repository.Queries, config *util.Config, emailService *service.EmailService) {
 
-	AuthService := service.NewAuthService(config, queries, service.NewTokenService(config))
+	AuthService := service.NewAuthService(config, queries, service.NewTokenService(config), emailService)
 	handler := NewAuthHandler(queries, service.NewTokenService(config), AuthService)
 	authRoutes := r.Group("/auth")
 	{
