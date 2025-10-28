@@ -175,9 +175,12 @@ export function useUpdateUserRole() {
       userId: string;
       input: UpdateUserRoleInput;
     }) => updateUserRole(userId, input),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      queryClient.setQueryData(["admin", "users", variables.userId], data);
+    onSuccess: async (data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      await queryClient.setQueryData(
+        ["admin", "users", variables.userId],
+        data,
+      );
       toast.success("User role updated successfully");
     },
     onError: (error: Error) => {
@@ -197,9 +200,12 @@ export function useUpdateUserName() {
       userId: string;
       input: UpdateUserNameInput;
     }) => updateUserName(userId, input),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      queryClient.setQueryData(["admin", "users", variables.userId], data);
+    onSuccess: async (data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      await queryClient.setQueryData(
+        ["admin", "users", variables.userId],
+        data,
+      );
       toast.success("User name updated successfully");
     },
     onError: (error: Error) => {
@@ -232,9 +238,11 @@ export function useToggleEmailVerification() {
   return useMutation({
     mutationFn: ({ userId, verified }: { userId: string; verified: boolean }) =>
       toggleEmailVerification(userId, verified),
-    onSuccess: (_, { userId }) => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "user", userId] });
+    onSuccess: async (_, { userId }) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "user", userId],
+      });
       toast.success("Email verification status updated successfully");
     },
     onError: (error: Error) => {
@@ -248,8 +256,8 @@ export function useDeleteUser() {
 
   return useMutation({
     mutationFn: (userId: string) => deleteUser(userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
       toast.success("User deleted successfully");
     },
     onError: (error: Error) => {
