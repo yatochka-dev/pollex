@@ -88,11 +88,11 @@ export default function ProfilePage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">
-                  {user?.name || "User"}
+                  {user?.name ?? "User"}
                 </h1>
                 <div className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
                   <Mail className="h-4 w-4" />
-                  <span>{user?.email || "No email"}</span>
+                  <span>{user?.email ?? "No email"}</span>
                   <EmailVerifiedBadge isVerified={!!user?.email_verified_at} />
                 </div>
               </div>
@@ -116,7 +116,7 @@ export default function ProfilePage() {
             </div>
             {polls.length > 0 && (
               <span className="text-muted-foreground text-sm">
-                Member since {user?.created_at?.toLocaleDateString() || "N/A"}
+                Member since {user?.created_at?.toLocaleDateString() ?? "N/A"}
               </span>
             )}
           </div>

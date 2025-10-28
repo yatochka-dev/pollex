@@ -94,8 +94,8 @@ export function useClosePoll() {
 
   return useMutation({
     mutationFn: (pollId: string) => closePoll(pollId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "polls"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "polls"] });
       toast.success("Poll closed successfully");
     },
     onError: (error: Error) => {
@@ -109,8 +109,8 @@ export function useReopenPoll() {
 
   return useMutation({
     mutationFn: (pollId: string) => reopenPoll(pollId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "polls"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "polls"] });
       toast.success("Poll reopened successfully");
     },
     onError: (error: Error) => {
@@ -124,8 +124,8 @@ export function useDeletePoll() {
 
   return useMutation({
     mutationFn: (pollId: string) => deletePoll(pollId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "polls"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "polls"] });
       toast.success("Poll deleted successfully");
     },
     onError: (error: Error) => {

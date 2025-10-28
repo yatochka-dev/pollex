@@ -61,7 +61,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent Audit Logs */}
-      <div className="rounded-lg border bg-card p-6">
+      <div className="bg-card rounded-lg border p-6">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -69,14 +69,14 @@ export default function AdminDashboard() {
           </div>
           <Link
             href="/admin/audit"
-            className="text-primary hover:underline text-sm"
+            className="text-primary text-sm hover:underline"
           >
             View all
           </Link>
         </div>
 
         {recentAudits.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">
+          <p className="text-muted-foreground py-8 text-center">
             No recent activity
           </p>
         ) : (
@@ -84,7 +84,7 @@ export default function AdminDashboard() {
             {recentAudits.map((log) => (
               <div
                 key={log.id}
-                className="border-b last:border-b-0 py-3 flex items-start gap-3"
+                className="flex items-start gap-3 border-b py-3 last:border-b-0"
               >
                 <div className="bg-muted rounded-full p-2">
                   <FileText className="h-4 w-4" />
@@ -96,11 +96,11 @@ export default function AdminDashboard() {
                       <p className="text-muted-foreground text-sm">
                         {formatAction(log.action)}
                       </p>
-                      {log.meta && (
-                        <p className="text-muted-foreground text-xs mt-1">
+                      {/*{log.meta && (
+                        <p className="text-muted-foreground mt-1 text-xs">
                           {formatMeta(log.meta)}
                         </p>
-                      )}
+                      )}*/}
                     </div>
                     <span className="text-muted-foreground text-xs whitespace-nowrap">
                       {formatRelativeTime(log.created_at)}
@@ -114,8 +114,8 @@ export default function AdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="rounded-lg border bg-card p-6">
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+      <div className="bg-card rounded-lg border p-6">
+        <h2 className="mb-4 text-xl font-semibold">Quick Actions</h2>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <QuickActionButton href="/admin/users">
             Manage Users
@@ -149,11 +149,11 @@ function StatCard({
 }) {
   return (
     <Link href={href}>
-      <div className="rounded-lg border bg-card p-6 hover:shadow-lg transition-shadow">
+      <div className="bg-card rounded-lg border p-6 transition-shadow hover:shadow-lg">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-muted-foreground text-sm font-medium">{title}</p>
-            <p className="text-3xl font-bold mt-2">{value}</p>
+            <p className="mt-2 text-3xl font-bold">{value}</p>
           </div>
           <div className={`${iconBg} ${iconColor} rounded-full p-3`}>
             {icon}
@@ -174,7 +174,7 @@ function QuickActionButton({
   return (
     <Link
       href={href}
-      className="border rounded-lg p-4 hover:bg-accent transition-colors text-center font-medium"
+      className="hover:bg-accent rounded-lg border p-4 text-center font-medium transition-colors"
     >
       {children}
     </Link>
@@ -194,18 +194,18 @@ function formatAction(action: string): string {
     "admin.login": "Logged in as admin",
   };
 
-  return actionMap[action] || action;
+  return actionMap[action] ?? action;
 }
 
-function formatMeta(meta: Record<string, unknown>): string {
-  if (meta.old_role && meta.new_role) {
-    return `${meta.old_role} → ${meta.new_role}`;
-  }
-  if (meta.poll_question) {
-    return `"${meta.poll_question}"`;
-  }
-  return "";
-}
+// function formatMeta(meta: Record<string, unknown>): string {
+//   if (meta.old_role && meta.new_role) {
+//     return `${meta.old_role} → ${meta.new_role}`;
+//   }
+//   if (meta.poll_question) {
+//     return `"${meta.poll_question}"`;
+//   }
+//   return "";
+// }
 
 function formatRelativeTime(date: Date): string {
   const now = new Date();

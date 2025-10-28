@@ -453,7 +453,7 @@ function formatActionDescription(action: string): string {
     "admin.login": "Logged in as admin",
   };
 
-  return actionMap[action] || action;
+  return actionMap[action] ?? action;
 }
 
 function formatDateTime(date: Date): string {

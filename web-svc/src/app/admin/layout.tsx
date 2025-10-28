@@ -15,7 +15,7 @@ export default function AdminLayout({
   const { user, isLoading } = useSession();
 
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== "admin")) {
+    if (!isLoading && user?.role !== "admin") {
       router.push("/");
     }
   }, [user, isLoading, router]);
@@ -30,7 +30,7 @@ export default function AdminLayout({
   }
 
   // Don't render admin content if not admin
-  if (!user || user.role !== "admin") {
+  if (user?.role !== "admin") {
     return null;
   }
 

@@ -70,14 +70,14 @@ export function AuthForms() {
         const validation = registerSchema.safeParse(value);
         if (!validation.success) {
           const firstError = validation.error.errors[0];
-          toast.error(firstError?.message || "Please check your inputs");
+          toast.error(firstError?.message ?? "Please check your inputs");
           return;
         }
       } else {
         const validation = loginSchema.safeParse(value);
         if (!validation.success) {
           const firstError = validation.error.errors[0];
-          toast.error(firstError?.message || "Please check your inputs");
+          toast.error(firstError?.message ?? "Please check your inputs");
           return;
         }
       }

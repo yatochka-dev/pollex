@@ -63,8 +63,8 @@ export default function ResetPasswordPage() {
   const form = useForm<ResetPasswordWithTokenInput>({
     resolver: zodResolver(ResetPasswordWithTokenInputSchema),
     defaultValues: {
-      token: token || "",
-      uid: uid || "",
+      token: token ?? "",
+      uid: uid ?? "",
       password: "",
       confirmPassword: "",
     },
@@ -138,7 +138,7 @@ export default function ResetPasswordPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <Loader2 className="text-primary h-12 w-12 animate-spin" />
             </div>
             <CardTitle>Validating reset link...</CardTitle>
             <CardDescription>
@@ -165,7 +165,7 @@ export default function ResetPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-center text-sm">
               You can now log in with your new password.
             </p>
           </CardContent>
@@ -191,9 +191,9 @@ export default function ResetPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-lg bg-muted p-4 text-sm">
+            <div className="bg-muted rounded-lg p-4 text-sm">
               <p className="font-medium">Common reasons:</p>
-              <ul className="mt-2 space-y-1 text-muted-foreground">
+              <ul className="text-muted-foreground mt-2 space-y-1">
                 <li>• The link has expired (links are valid for 24 hours)</li>
                 <li>• The link has already been used</li>
                 <li>• The link was copied incorrectly</li>
@@ -226,7 +226,7 @@ export default function ResetPasswordPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">
-            <Lock className="h-12 w-12 text-primary" />
+            <Lock className="text-primary h-12 w-12" />
           </div>
           <CardTitle>Set new password</CardTitle>
           <CardDescription>
@@ -253,7 +253,7 @@ export default function ResetPasswordPage() {
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
                           onClick={() => setShowPassword(!showPassword)}
                         >
                           {showPassword ? (
@@ -288,7 +288,7 @@ export default function ResetPasswordPage() {
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
                           onClick={() =>
                             setShowConfirmPassword(!showConfirmPassword)
                           }

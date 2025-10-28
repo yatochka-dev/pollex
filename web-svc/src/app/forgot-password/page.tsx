@@ -79,9 +79,9 @@ export default function ForgotPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-lg bg-muted p-4 text-sm">
-              <p className="font-medium">Didn't receive the email?</p>
-              <ul className="mt-2 space-y-1 text-muted-foreground">
+            <div className="bg-muted rounded-lg p-4 text-sm">
+              <p className="font-medium">Didn&apos;t receive the email?</p>
+              <ul className="text-muted-foreground mt-2 space-y-1">
                 <li>• Check your spam folder</li>
                 <li>• Make sure you entered the correct email</li>
                 <li>• Wait a few minutes and try again</li>
@@ -115,12 +115,12 @@ export default function ForgotPasswordPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">
-            <Mail className="h-12 w-12 text-primary" />
+            <Mail className="text-primary h-12 w-12" />
           </div>
           <CardTitle>Forgot your password?</CardTitle>
           <CardDescription>
-            Enter your email address and we'll send you a link to reset your
-            password.
+            Enter your email address and we&apos;ll send you a link to reset
+            your password.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -140,7 +140,7 @@ export default function ForgotPasswordPage() {
                       />
                     </FormControl>
                     <FormDescription>
-                      We'll send a password reset link to this email.
+                      We&apos;ll send a password reset link to this email.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -151,9 +151,7 @@ export default function ForgotPasswordPage() {
                 className="w-full"
                 disabled={form.formState.isSubmitting}
               >
-                {form.formState.isSubmitting
-                  ? "Sending..."
-                  : "Send reset link"}
+                {form.formState.isSubmitting ? "Sending..." : "Send reset link"}
               </Button>
             </form>
           </Form>
