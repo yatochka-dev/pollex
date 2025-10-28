@@ -17,6 +17,7 @@ type Config struct {
 	CookieSecure           bool
 	ResendAPIKey           string
 	AppBaseURL             string
+	Port                   int16
 }
 
 func LoadEnvironment() {
@@ -39,6 +40,14 @@ func NewConfig() *Config {
 	appBaseURL := os.Getenv("APP_BASE_URL")
 	if appBaseURL == "" {
 		appBaseURL = "http://localhost:8080" // fallback for dev
+	}
+
+	// PORT - parse to int16, default 8080
+	port := int16(8080)
+	if s := os.Getenv("PORT"); s != "" {
+		if p, err := strconv.ParseInt(s, 10, 16); err == nil {
+			port = int16(p)
+		}
 	}
 
 	// AUTH SECRET
@@ -114,5 +123,6 @@ func NewConfig() *Config {
 		CookieSecure:           cookieSecure,
 		ResendAPIKey:           os.Getenv("RESEND_API_KEY"),
 		AppBaseURL:             appBaseURL,
+		Port:                   port,
 	}
 }

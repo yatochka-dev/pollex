@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -104,7 +105,7 @@ func main() {
 
 	controllers.RegisterEmailRoutes(r, repo, emailSvc)
 
-	if err := r.Run(":8080"); err != nil {
+	if err := r.Run(fmt.Sprintf(":%d", config.Port)); err != nil {
 		panic(err)
 	}
 
