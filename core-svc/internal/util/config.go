@@ -22,8 +22,7 @@ type Config struct {
 func LoadEnvironment() {
 	err := env.Load(".env")
 	if err != nil {
-		log.Fatal("Unable to load the core enviroment file")
-		// panic(".env" + err.Error())
+		log.Println("Unable to load the core environment file")
 	}
 
 }
