@@ -155,7 +155,10 @@ export const UserPollSchema = z.object({
 
 export type UserPoll = z.infer<typeof UserPollSchema>;
 
-export const UserPollsResponseSchema = z.array(UserPollSchema);
+export const UserPollsResponseSchema = z
+  .array(UserPollSchema)
+  .nullable()
+  .default([]);
 
 export type UserPollsResponse = z.infer<typeof UserPollsResponseSchema>;
 
