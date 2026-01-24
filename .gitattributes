@@ -1,0 +1,3 @@
+src/app/** linguist-vendored
+src/components/** linguist-vendored
+src/lib/** linguist-vendored
