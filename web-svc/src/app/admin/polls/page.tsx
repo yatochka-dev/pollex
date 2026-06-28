@@ -22,7 +22,9 @@ import type { AdminPoll } from "~/lib/types";
 
 export default function AdminPollsPage() {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">(
+    "all",
+  );
   const [page, setPage] = useState(0);
   const [actionConfirm, setActionConfirm] = useState<{
     type: "close" | "reopen" | "delete";
@@ -45,10 +47,11 @@ export default function AdminPollsPage() {
   const reopenPoll = useReopenPoll();
   const deletePoll = useDeletePoll();
 
-  const filteredPolls = data?.polls.filter((poll) =>
-    poll.question.toLowerCase().includes(search.toLowerCase()) ||
-    poll.owner_name.toLowerCase().includes(search.toLowerCase()) ||
-    poll.owner_email.toLowerCase().includes(search.toLowerCase())
+  const filteredPolls = data?.polls.filter(
+    (poll) =>
+      poll.question.toLowerCase().includes(search.toLowerCase()) ||
+      poll.owner_name.toLowerCase().includes(search.toLowerCase()) ||
+      poll.owner_email.toLowerCase().includes(search.toLowerCase()),
   );
 
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
@@ -91,13 +94,13 @@ export default function AdminPollsPage() {
       {/* Search and Filters */}
       <div className="flex gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search polls by question or owner..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border bg-background pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="bg-background focus:ring-primary w-full rounded-lg border py-2 pr-4 pl-10 focus:ring-2 focus:outline-none"
           />
         </div>
         <select
@@ -105,7 +108,7 @@ export default function AdminPollsPage() {
           onChange={(e) =>
             setStatusFilter(e.target.value as "all" | "open" | "closed")
           }
-          className="rounded-lg border bg-background px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+          className="bg-background focus:ring-primary rounded-lg border px-4 py-2 focus:ring-2 focus:outline-none"
         >
           <option value="all">All Polls</option>
           <option value="open">Open Only</option>
@@ -135,7 +138,7 @@ export default function AdminPollsPage() {
       )}
 
       {/* Polls Table */}
-      <div className="rounded-lg border bg-card">
+      <div className="bg-card rounded-lg border">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-muted-foreground">Loading polls...</div>
@@ -146,28 +149,28 @@ export default function AdminPollsPage() {
           </div>
         ) : !filteredPolls || filteredPolls.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
-            <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
+            <BarChart3 className="text-muted-foreground mb-4 h-12 w-12" />
             <p className="text-muted-foreground">No polls found</p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="border-b bg-muted/50">
+                <thead className="bg-muted/50 border-b">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="text-muted-foreground px-6 py-3 text-left text-xs font-medium tracking-wider uppercase">
                       Question
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="text-muted-foreground px-6 py-3 text-left text-xs font-medium tracking-wider uppercase">
                       Owner
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="text-muted-foreground px-6 py-3 text-left text-xs font-medium tracking-wider uppercase">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="text-muted-foreground px-6 py-3 text-left text-xs font-medium tracking-wider uppercase">
                       Created
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="text-muted-foreground px-6 py-3 text-right text-xs font-medium tracking-wider uppercase">
                       Actions
                     </th>
                   </tr>
@@ -181,10 +184,10 @@ export default function AdminPollsPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-start gap-3">
                           <div className="flex-1">
-                            <div className="font-medium line-clamp-2">
+                            <div className="line-clamp-2 font-medium">
                               {poll.question}
                             </div>
-                            <div className="text-muted-foreground text-xs mt-1">
+                            <div className="text-muted-foreground mt-1 text-xs">
                               ID: {poll.id.slice(0, 8)}
                             </div>
                           </div>
@@ -203,15 +206,15 @@ export default function AdminPollsPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <StatusBadge closed={poll.closed} />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      <td className="text-muted-foreground px-6 py-4 text-sm whitespace-nowrap">
                         {formatDate(poll.created_at)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
                           <Link
                             href={`/${poll.id}`}
                             target="_blank"
-                            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+                            className="hover:bg-accent inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
                             title="View poll"
                           >
                             <ExternalLink className="h-4 w-4" />
@@ -221,7 +224,7 @@ export default function AdminPollsPage() {
                               onClick={() =>
                                 setActionConfirm({ type: "reopen", poll })
                               }
-                              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-600/10 transition-colors"
+                              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-green-600 transition-colors hover:bg-green-600/10"
                               title="Reopen poll"
                             >
                               <Unlock className="h-4 w-4" />
@@ -232,7 +235,7 @@ export default function AdminPollsPage() {
                               onClick={() =>
                                 setActionConfirm({ type: "close", poll })
                               }
-                              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-orange-600 hover:bg-orange-600/10 transition-colors"
+                              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-orange-600 transition-colors hover:bg-orange-600/10"
                               title="Close poll"
                             >
                               <Lock className="h-4 w-4" />
@@ -243,7 +246,7 @@ export default function AdminPollsPage() {
                             onClick={() =>
                               setActionConfirm({ type: "delete", poll })
                             }
-                            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                            className="text-destructive hover:bg-destructive/10 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
                             title="Delete poll"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -260,14 +263,14 @@ export default function AdminPollsPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t px-6 py-4">
-                <div className="text-sm text-muted-foreground">
+                <div className="text-muted-foreground text-sm">
                   Page {page + 1} of {totalPages} · {data?.total} total polls
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setPage((p) => Math.max(0, p - 1))}
                     disabled={page === 0}
-                    className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="hover:bg-accent inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Previous
@@ -277,7 +280,7 @@ export default function AdminPollsPage() {
                       setPage((p) => Math.min(totalPages - 1, p + 1))
                     }
                     disabled={page >= totalPages - 1}
-                    className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="hover:bg-accent inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Next
                     <ChevronRight className="h-4 w-4" />
@@ -293,7 +296,10 @@ export default function AdminPollsPage() {
       {actionConfirm && (
         <ConfirmDialog
           title={getActionTitle(actionConfirm.type)}
-          description={getActionDescription(actionConfirm.type, actionConfirm.poll)}
+          description={getActionDescription(
+            actionConfirm.type,
+            actionConfirm.poll,
+          )}
           confirmLabel={getActionLabel(actionConfirm.type)}
           onConfirm={handleAction}
           onCancel={() => setActionConfirm(null)}
@@ -333,11 +339,11 @@ function StatBox({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="bg-card rounded-lg border p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-muted-foreground text-sm">{label}</p>
-          <p className="text-2xl font-bold mt-1">{value}</p>
+          <p className="mt-1 text-2xl font-bold">{value}</p>
         </div>
         <div className="text-muted-foreground">{icon}</div>
       </div>
@@ -363,15 +369,15 @@ function ConfirmDialog({
   variant?: "default" | "destructive";
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg">
-        <h3 className="text-lg font-semibold mb-2">{title}</h3>
-        <p className="text-muted-foreground text-sm mb-6">{description}</p>
-        <div className="flex gap-3 justify-end">
+    <div className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+      <div className="bg-card w-full max-w-md rounded-lg border p-6 shadow-lg">
+        <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+        <p className="text-muted-foreground mb-6 text-sm">{description}</p>
+        <div className="flex justify-end gap-3">
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50"
+            className="hover:bg-accent rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -403,7 +409,10 @@ function getActionTitle(type: "close" | "reopen" | "delete"): string {
   }
 }
 
-function getActionDescription(type: "close" | "reopen" | "delete", poll: AdminPoll): string {
+function getActionDescription(
+  type: "close" | "reopen" | "delete",
+  poll: AdminPoll,
+): string {
   switch (type) {
     case "close":
       return `Are you sure you want to close "${poll.question}"? Users will no longer be able to vote on this poll.`;

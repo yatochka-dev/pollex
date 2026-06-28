@@ -26,10 +26,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, getPath } from "~/lib/api";
-import {
-  UserPollsResponseSchema,
-  type UserPollsResponse,
-} from "~/lib/types";
+import { UserPollsResponseSchema, type UserPollsResponse } from "~/lib/types";
 
 /**
  * API function to fetch user's polls

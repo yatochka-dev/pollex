@@ -36,7 +36,7 @@ export function EmailVerificationBanner({
       {
         method: "POST",
         parser: (data) => ResendVerificationResponseSchema.parse(data),
-        showErrorToast: true,
+        showErrorToast: false,
       },
     );
 
@@ -54,6 +54,10 @@ export function EmailVerificationBanner({
           duration: 5000,
         },
       );
+    } else {
+      toast.error(result.error.message, {
+        duration: 5000,
+      });
     }
   };
 
@@ -68,10 +72,8 @@ export function EmailVerificationBanner({
       <AlertDescription className="mt-2 flex flex-col gap-3 text-sm">
         <p>
           Please verify your email address{" "}
-          {userEmail && (
-            <span className="font-medium">({userEmail})</span>
-          )}{" "}
-          to create polls and vote. Check your inbox for the verification link.
+          {userEmail && <span className="font-medium">({userEmail})</span>} to
+          create polls and vote. Check your inbox for the verification link.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -89,14 +91,17 @@ export function EmailVerificationBanner({
             ) : (
               <>
                 <Mail className="mr-2 h-3 w-3" />
-                {lastSentAt ? "Resend verification email" : "Send verification email"}
+                {lastSentAt
+                  ? "Resend verification email"
+                  : "Send verification email"}
               </>
             )}
           </Button>
           {lastSentAt && !canResend && (
-            <span className="text-xs text-muted-foreground">
-              Wait {Math.ceil((60000 - (Date.now() - lastSentAt.getTime())) / 1000)}s before
-              resending
+            <span className="text-muted-foreground text-xs">
+              Wait{" "}
+              {Math.ceil((60000 - (Date.now() - lastSentAt.getTime())) / 1000)}s
+              before resending
             </span>
           )}
         </div>

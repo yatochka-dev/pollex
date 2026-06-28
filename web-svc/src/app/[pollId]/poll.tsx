@@ -17,6 +17,7 @@ import useUserVote from "~/hooks/useUserVote";
 import useSession from "~/hooks/useSession";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { getUserFacingErrorMessage } from "~/lib/api";
 
 interface PollProps {
   pollId: string;
@@ -132,7 +133,8 @@ export function PollCard({ pollId }: PollProps) {
         {
           loading: "Recording your vote...",
           success: "Vote recorded!",
-          error: "Failed to record vote",
+          error: (error) =>
+            getUserFacingErrorMessage(error, "Failed to record vote."),
         },
         {
           style: {

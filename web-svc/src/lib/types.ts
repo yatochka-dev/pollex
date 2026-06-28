@@ -48,6 +48,7 @@ export type User = z.infer<typeof UserSchema>;
 export const ErrorResponseSchema = z.object({
   message: z.string(),
   data: z.unknown().optional(),
+  rawMessage: z.string().optional(),
 });
 
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
@@ -320,11 +321,22 @@ export type RequestPasswordResetInput = z.infer<
   typeof RequestPasswordResetInputSchema
 >;
 
-export const RequestPasswordResetResponseSchema = z.object({
+const MessageDataResponseSchema = z.object({
   data: z.object({
     message: z.string(),
   }),
 });
+
+const FlatMessageResponseSchema = z
+  .object({
+    message: z.string(),
+  })
+  .transform(({ message }) => ({ data: { message } }));
+
+export const RequestPasswordResetResponseSchema = z.union([
+  MessageDataResponseSchema,
+  FlatMessageResponseSchema,
+]);
 
 export type RequestPasswordResetResponse = z.infer<
   typeof RequestPasswordResetResponseSchema

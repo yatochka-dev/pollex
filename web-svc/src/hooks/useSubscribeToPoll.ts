@@ -3,13 +3,17 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useMemo } from "react";
-import { env } from "~/env";
+import { getPath, parseErrorResponse } from "~/lib/api";
 import { PollDataSchema, ViewersEventSchema, type PollData } from "~/lib/types";
 
 async function getInitialData(id: string): Promise<PollData> {
-  const u = new URL(`/polls/votes/${id}`, env.NEXT_PUBLIC_SERVER_URL);
+  const response = await fetch(getPath(`/polls/votes/${id}`));
 
-  const response = await fetch(u);
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw new Error(error.message);
+  }
+
   const data = await response.json();
   return PollDataSchema.parse(data);
 }
@@ -27,10 +31,7 @@ export const useSubscribeToPoll = (pollId: string) => {
   });
 
   useEffect(() => {
-    const u = new URL(
-      `/polls/votes/${pollId}/subscribe`,
-      env.NEXT_PUBLIC_SERVER_URL,
-    );
+    const u = getPath(`/polls/votes/${pollId}/subscribe`);
 
     const eventSource = new EventSource(u);
 

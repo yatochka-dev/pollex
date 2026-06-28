@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getPath, parseErrorResponse } from "~/lib/api";
+import {
+  getPath,
+  getUserFacingErrorMessage,
+  parseErrorResponse,
+} from "~/lib/api";
 import {
   AdminUsersResponseSchema,
   AdminUserSchema,
@@ -184,7 +188,9 @@ export function useUpdateUserRole() {
       toast.success("User role updated successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to update user role");
+      toast.error(
+        getUserFacingErrorMessage(error, "Failed to update user role."),
+      );
     },
   });
 }
@@ -209,7 +215,9 @@ export function useUpdateUserName() {
       toast.success("User name updated successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to update user name");
+      toast.error(
+        getUserFacingErrorMessage(error, "Failed to update user name."),
+      );
     },
   });
 }
@@ -227,7 +235,9 @@ export function useResetUserPassword() {
       toast.success("Password reset successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to reset password");
+      toast.error(
+        getUserFacingErrorMessage(error, "Failed to reset password."),
+      );
     },
   });
 }
@@ -246,7 +256,12 @@ export function useToggleEmailVerification() {
       toast.success("Email verification status updated successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to update verification status");
+      toast.error(
+        getUserFacingErrorMessage(
+          error,
+          "Failed to update verification status.",
+        ),
+      );
     },
   });
 }
@@ -261,7 +276,7 @@ export function useDeleteUser() {
       toast.success("User deleted successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to delete user");
+      toast.error(getUserFacingErrorMessage(error, "Failed to delete user."));
     },
   });
 }

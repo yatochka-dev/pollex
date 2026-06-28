@@ -1,24 +1,24 @@
 "use client";
 
 import * as React from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { apiFetch, getPath } from "~/lib/api";
 import {
-  ResetPasswordWithTokenInputSchema,
-  ResetPasswordWithTokenResponseSchema,
-  ValidateResetTokenResponseSchema,
-  type ResetPasswordWithTokenInput,
-  type ResetPasswordWithTokenResponse,
-  type ValidateResetTokenResponse,
-} from "~/lib/types";
+  ArrowLeft,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  XCircle,
+} from "lucide-react";
+
 import { Button } from "~/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
@@ -32,14 +32,15 @@ import {
   FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
+import { apiFetch, getPath } from "~/lib/api";
 import {
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Lock,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+  ResetPasswordWithTokenInputSchema,
+  ResetPasswordWithTokenResponseSchema,
+  ValidateResetTokenResponseSchema,
+  type ResetPasswordWithTokenInput,
+  type ResetPasswordWithTokenResponse,
+  type ValidateResetTokenResponse,
+} from "~/lib/types";
 
 type ResetState =
   | { status: "validating" }
@@ -70,7 +71,6 @@ export default function ResetPasswordPage() {
     },
   });
 
-  // Validate token on mount
   React.useEffect(() => {
     async function validateToken() {
       if (!token || !uid) {
@@ -78,8 +78,9 @@ export default function ResetPasswordPage() {
         return;
       }
 
+      const params = new URLSearchParams({ token, uid });
       const result = await apiFetch<ValidateResetTokenResponse>(
-        getPath(`/email/validate-reset-token?token=${token}&uid=${uid}`),
+        getPath(`/email/validate-reset-token?${params.toString()}`),
         {
           method: "GET",
           parser: (data) => ValidateResetTokenResponseSchema.parse(data),
@@ -95,7 +96,7 @@ export default function ResetPasswordPage() {
           message:
             result.success === false
               ? result.error.message
-              : "Invalid or expired reset token",
+              : "This reset link is invalid or expired.",
         });
       }
     }
@@ -124,118 +125,98 @@ export default function ResetPasswordPage() {
 
     if (result.success) {
       setState({ status: "success" });
-      // Redirect to login after 2 seconds
       setTimeout(() => {
         router.push("/auth");
       }, 2000);
     }
   };
 
-  // Loading state
   if (state.status === "validating") {
     return (
-      <div className="container flex min-h-[80vh] items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mb-4 flex justify-center">
-              <Loader2 className="text-primary h-12 w-12 animate-spin" />
-            </div>
-            <CardTitle>Validating reset link...</CardTitle>
-            <CardDescription>
-              Please wait while we verify your password reset link.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <AuthStateCard
+        icon={<Loader2 className="text-primary h-6 w-6 animate-spin" />}
+        title="Checking reset link"
+        description="Please wait while we verify this password reset link."
+      />
     );
   }
 
-  // Success state
   if (state.status === "success") {
     return (
-      <div className="container flex min-h-[80vh] items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mb-4 flex justify-center">
-              <CheckCircle2 className="h-12 w-12 text-green-500" />
-            </div>
-            <CardTitle>Password reset successful!</CardTitle>
-            <CardDescription>
-              Your password has been updated. Redirecting to login...
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-center text-sm">
-              You can now log in with your new password.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <AuthStateCard
+        icon={<CheckCircle2 className="h-6 w-6 text-emerald-500" />}
+        title="Password updated"
+        description="Your password has been changed. Redirecting to login..."
+        footer={
+          <p className="text-muted-foreground text-center text-sm">
+            You can now sign in with your new password.
+          </p>
+        }
+      />
     );
   }
 
-  // Invalid token state
   if (state.status === "invalid" || state.status === "missing-params") {
     return (
-      <div className="container flex min-h-[80vh] items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mb-4 flex justify-center">
-              <XCircle className="h-12 w-12 text-red-500" />
-            </div>
-            <CardTitle>Invalid reset link</CardTitle>
-            <CardDescription>
-              {state.status === "invalid"
-                ? state.message
-                : "This password reset link is invalid or incomplete."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-muted rounded-lg p-4 text-sm">
-              <p className="font-medium">Common reasons:</p>
-              <ul className="text-muted-foreground mt-2 space-y-1">
-                <li>• The link has expired (links are valid for 24 hours)</li>
-                <li>• The link has already been used</li>
-                <li>• The link was copied incorrectly</li>
-              </ul>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-2">
-            <Button
-              onClick={() => router.push("/forgot-password")}
-              className="w-full"
-            >
+      <AuthStateCard
+        icon={<XCircle className="text-destructive h-6 w-6" />}
+        title="Invalid reset link"
+        description={
+          state.status === "invalid"
+            ? state.message
+            : "This password reset link is invalid or incomplete."
+        }
+        footer={
+          <div className="flex flex-col gap-2">
+            <Button onClick={() => router.push("/forgot-password")}>
               Request a new reset link
             </Button>
-            <Button
-              onClick={() => router.push("/auth")}
-              variant="ghost"
-              className="w-full"
-            >
+            <Button onClick={() => router.push("/auth")} variant="ghost">
               Back to login
             </Button>
-          </CardFooter>
-        </Card>
-      </div>
+          </div>
+        }
+      />
     );
   }
 
-  // Valid token - show password reset form
   return (
-    <div className="container flex min-h-[80vh] items-center justify-center py-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mb-4 flex justify-center">
-            <Lock className="text-primary h-12 w-12" />
+    <main className="mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+      <section className="hidden max-w-md lg:block">
+        <div className="bg-primary text-primary-foreground mb-5 flex h-12 w-12 items-center justify-center rounded-lg">
+          <Lock className="h-6 w-6" />
+        </div>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Choose a new password
+        </h1>
+        <p className="text-muted-foreground mt-3 text-sm leading-6">
+          Use a password that is at least 8 characters and different from one
+          you use elsewhere.
+        </p>
+      </section>
+
+      <Card className="mx-auto w-full max-w-md rounded-lg">
+        <CardHeader>
+          <Button
+            onClick={() => router.push("/auth")}
+            variant="ghost"
+            size="sm"
+            className="mb-3 w-fit px-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to login
+          </Button>
+          <div className="bg-primary/10 text-primary mb-2 flex h-10 w-10 items-center justify-center rounded-lg lg:hidden">
+            <Lock className="h-5 w-5" />
           </div>
-          <CardTitle>Set new password</CardTitle>
+          <CardTitle className="text-2xl">Set new password</CardTitle>
           <CardDescription>
-            Enter a new password for your account.
+            Enter and confirm the password you want to use.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               <FormField
                 control={form.control}
                 name="password"
@@ -243,29 +224,17 @@ export default function ResetPasswordPage() {
                   <FormItem>
                     <FormLabel>New password</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Enter new password"
-                          {...field}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
+                      <PasswordInput
+                        id="password"
+                        placeholder="Enter new password"
+                        autoComplete="new-password"
+                        showPassword={showPassword}
+                        onToggle={() => setShowPassword((current) => !current)}
+                        {...field}
+                      />
                     </FormControl>
                     <FormDescription>
-                      Must be at least 8 characters long.
+                      Must be at least 8 characters.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -278,28 +247,16 @@ export default function ResetPasswordPage() {
                   <FormItem>
                     <FormLabel>Confirm new password</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Input
-                          type={showConfirmPassword ? "text" : "password"}
-                          placeholder="Confirm new password"
-                          {...field}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() =>
-                            setShowConfirmPassword(!showConfirmPassword)
-                          }
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
+                      <PasswordInput
+                        id="confirm-password"
+                        placeholder="Repeat new password"
+                        autoComplete="new-password"
+                        showPassword={showConfirmPassword}
+                        onToggle={() =>
+                          setShowConfirmPassword((current) => !current)
+                        }
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -307,26 +264,87 @@ export default function ResetPasswordPage() {
               />
               <Button
                 type="submit"
+                size="lg"
                 className="w-full"
                 disabled={form.formState.isSubmitting}
               >
-                {form.formState.isSubmitting
-                  ? "Resetting password..."
-                  : "Reset password"}
+                {form.formState.isSubmitting ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4" />
+                    Update password
+                  </>
+                )}
               </Button>
             </form>
           </Form>
         </CardContent>
-        <CardFooter>
-          <Button
-            onClick={() => router.push("/auth")}
-            variant="ghost"
-            className="w-full"
-          >
-            Back to login
-          </Button>
-        </CardFooter>
       </Card>
+    </main>
+  );
+}
+
+function PasswordInput({
+  showPassword,
+  onToggle,
+  ...props
+}: React.ComponentProps<typeof Input> & {
+  showPassword: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="relative">
+      <Lock className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+      <Input
+        {...props}
+        type={showPassword ? "text" : "password"}
+        className="h-11 px-9"
+      />
+      <button
+        type="button"
+        aria-label={showPassword ? "Hide password" : "Show password"}
+        onClick={onToggle}
+        className="text-muted-foreground hover:bg-accent hover:text-foreground absolute top-1/2 right-2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md transition"
+      >
+        {showPassword ? (
+          <EyeOff className="h-4 w-4" />
+        ) : (
+          <Eye className="h-4 w-4" />
+        )}
+      </button>
     </div>
+  );
+}
+
+function AuthStateCard({
+  icon,
+  title,
+  description,
+  footer,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <main className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center px-4 py-8 sm:px-6 lg:px-8">
+      <Card className="mx-auto w-full max-w-md rounded-lg">
+        <CardHeader className="text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="bg-muted flex h-12 w-12 items-center justify-center rounded-full">
+              {icon}
+            </div>
+          </div>
+          <CardTitle className="text-2xl">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        {footer && <CardContent>{footer}</CardContent>}
+      </Card>
+    </main>
   );
 }

@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getPath, parseErrorResponse } from "~/lib/api";
+import {
+  getPath,
+  getUserFacingErrorMessage,
+  parseErrorResponse,
+} from "~/lib/api";
 import {
   AdminPollsResponseSchema,
   type AdminPollsResponse,
@@ -99,7 +103,7 @@ export function useClosePoll() {
       toast.success("Poll closed successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to close poll");
+      toast.error(getUserFacingErrorMessage(error, "Failed to close poll."));
     },
   });
 }
@@ -114,7 +118,7 @@ export function useReopenPoll() {
       toast.success("Poll reopened successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to reopen poll");
+      toast.error(getUserFacingErrorMessage(error, "Failed to reopen poll."));
     },
   });
 }
@@ -129,7 +133,7 @@ export function useDeletePoll() {
       toast.success("Poll deleted successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to delete poll");
+      toast.error(getUserFacingErrorMessage(error, "Failed to delete poll."));
     },
   });
 }

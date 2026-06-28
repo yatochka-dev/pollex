@@ -1,9 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPath, parseErrorResponse } from "~/lib/api";
-import {
-  AuditLogsResponseSchema,
-  type AuditLogsResponse,
-} from "~/lib/types";
+import { AuditLogsResponseSchema, type AuditLogsResponse } from "~/lib/types";
 
 interface UseAuditLogsOptions {
   limit?: number;

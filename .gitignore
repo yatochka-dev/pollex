@@ -1,4 +1,11 @@
 .idea
+.zed
 node_modules
+.next
+dist
+build
+coverage
 .env
-*.md
+*.exe
+*.log
+*.tsbuildinfo
