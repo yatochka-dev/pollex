@@ -77,12 +77,10 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() =>
-                    router.push("/86227253-e029-482e-a1dd-dd42571c491c")
-                  }
+                  onClick={() => router.push("/polls")}
                   className="h-11"
                 >
-                  View demo
+                  View polls
                 </Button>
               </>
             ) : (
@@ -98,10 +96,10 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => router.push("/auth?form=login")}
+                  onClick={() => router.push("/polls")}
                   className="h-11"
                 >
-                  Sign in
+                  View polls
                 </Button>
               </>
             )}

@@ -69,10 +69,13 @@ const fetchUserPolls = async (): Promise<UserPollsResponse> => {
  * @returns {Error|null} error - Error object if query failed
  * @returns {Function} refetch - Function to manually refetch data
  */
-function useUserPolls() {
+function useUserPolls(options: { enabled?: boolean } = {}) {
+  const { enabled = true } = options;
+
   const query = useQuery({
     queryKey: ["user", "polls"],
     queryFn: fetchUserPolls,
+    enabled,
     // Refetch when window regains focus
     refetchOnWindowFocus: true,
     // Keep data fresh for 5 minutes
